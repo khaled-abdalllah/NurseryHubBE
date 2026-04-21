@@ -1,0 +1,23 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU" />
+    </Configurations>
+    <Folder Name="/src/">
+        <Project Path="src/NurseryHub.Domain/NurseryHub.Domain.csproj" />
+        <Project Path="src/NurseryHub.Application/NurseryHub.Application.csproj" />
+        <Project Path="src/NurseryHub.EntityFrameworkCore/NurseryHub.EntityFrameworkCore.csproj" />
+        <Project Path="src/NurseryHub.Domain.Shared/NurseryHub.Domain.Shared.csproj" />
+        <Project Path="src/NurseryHub.Application.Contracts/NurseryHub.Application.Contracts.csproj" />
+        <Project Path="src/NurseryHub.HttpApi/NurseryHub.HttpApi.csproj" />
+        <Project Path="src/NurseryHub.HttpApi.Client/NurseryHub.HttpApi.Client.csproj" />
+        <Project Path="src/NurseryHub.DbMigrator/NurseryHub.DbMigrator.csproj" />
+        <Project Path="src/NurseryHub.HttpApi.Host/NurseryHub.HttpApi.Host.csproj" />
+    </Folder>
+    <Folder Name="/test/">
+        <Project Path="test/NurseryHub.Application.Tests/NurseryHub.Application.Tests.csproj" />
+        <Project Path="test/NurseryHub.EntityFrameworkCore.Tests/NurseryHub.EntityFrameworkCore.Tests.csproj" />
+        <Project Path="test/NurseryHub.TestBase/NurseryHub.TestBase.csproj" />
+        <Project Path="test/NurseryHub.Domain.Tests/NurseryHub.Domain.Tests.csproj" />
+        <Project Path="test/NurseryHub.HttpApi.Client.ConsoleTestApp/NurseryHub.HttpApi.Client.ConsoleTestApp.csproj" />
+    </Folder>
+</Solution>

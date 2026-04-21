@@ -1,0 +1,109 @@
+{
+  "template": "app",
+  "imports": {
+    "Volo.Abp.LeptonXLiteTheme": {
+      "version": "5.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.Account": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.OpenIddict": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.Identity": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.TenantManagement": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.SettingManagement": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.PermissionManagement": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    },
+    "Volo.Abp.FeatureManagement": {
+      "version": "10.3.0",
+      "isInstalled": true,
+      "creationTime": "04/20/2026 11:50:57 +00:00"
+    }
+  },
+  "folders": {
+    "items": {
+      "src": {},
+      "test": {}
+    }
+  },
+  "packages": {
+    "NurseryHub.Application": {
+      "path": "src/NurseryHub.Application/NurseryHub.Application.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.Application.Tests": {
+      "path": "test/NurseryHub.Application.Tests/NurseryHub.Application.Tests.abppkg",
+      "folder": "test"
+    },
+    "NurseryHub.Domain.Shared": {
+      "path": "src/NurseryHub.Domain.Shared/NurseryHub.Domain.Shared.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.Application.Contracts": {
+      "path": "src/NurseryHub.Application.Contracts/NurseryHub.Application.Contracts.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.HttpApi": {
+      "path": "src/NurseryHub.HttpApi/NurseryHub.HttpApi.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.HttpApi.Client": {
+      "path": "src/NurseryHub.HttpApi.Client/NurseryHub.HttpApi.Client.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.EntityFrameworkCore.Tests": {
+      "path": "test/NurseryHub.EntityFrameworkCore.Tests/NurseryHub.EntityFrameworkCore.Tests.abppkg",
+      "folder": "test"
+    },
+    "NurseryHub.EntityFrameworkCore": {
+      "path": "src/NurseryHub.EntityFrameworkCore/NurseryHub.EntityFrameworkCore.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.TestBase": {
+      "path": "test/NurseryHub.TestBase/NurseryHub.TestBase.abppkg",
+      "folder": "test"
+    },
+    "NurseryHub.Domain.Tests": {
+      "path": "test/NurseryHub.Domain.Tests/NurseryHub.Domain.Tests.abppkg",
+      "folder": "test"
+    },
+    "NurseryHub.HttpApi.Client.ConsoleTestApp": {
+      "path": "test/NurseryHub.HttpApi.Client.ConsoleTestApp/NurseryHub.HttpApi.Client.ConsoleTestApp.abppkg",
+      "folder": "test"
+    },
+    "NurseryHub.DbMigrator": {
+      "path": "src/NurseryHub.DbMigrator/NurseryHub.DbMigrator.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.HttpApi.Host": {
+      "path": "src/NurseryHub.HttpApi.Host/NurseryHub.HttpApi.Host.abppkg",
+      "folder": "src"
+    },
+    "NurseryHub.Domain": {
+      "path": "src/NurseryHub.Domain/NurseryHub.Domain.abppkg",
+      "folder": "src"
+    }
+  }
+}
