@@ -11,4 +11,5 @@ public class NurseryDto : FullAuditedEntityDto<Guid>
     public string? LogoUrl { get; set; }
     public string? WebsiteUrl { get; set; }
     public bool IsActive { get; set; }
+    public int BranchCount { get; set; }
 }

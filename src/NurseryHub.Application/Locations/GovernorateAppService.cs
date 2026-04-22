@@ -3,14 +3,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using NurseryHub.Locations;
-using NurseryHub.Permissions;
+using NurseryHub.Security;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Locations;
 
-[Authorize(NurseryHubPermissions.Governorates.Default)]
+[Authorize(Roles = NurseryHubRoles.Admin)]
 public class GovernorateAppService
     : CrudAppService<
             Governorate,
@@ -24,11 +24,6 @@ public class GovernorateAppService
     public GovernorateAppService(IRepository<Governorate, Guid> repository)
         : base(repository)
     {
-        GetPolicyName = NurseryHubPermissions.Governorates.Default;
-        GetListPolicyName = NurseryHubPermissions.Governorates.Default;
-        CreatePolicyName = NurseryHubPermissions.Governorates.Create;
-        UpdatePolicyName = NurseryHubPermissions.Governorates.Edit;
-        DeletePolicyName = NurseryHubPermissions.Governorates.Delete;
     }
 
     protected override async Task<Governorate> MapToEntityAsync(CreateUpdateGovernorateDto createInput)

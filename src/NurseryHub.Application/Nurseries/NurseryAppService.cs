@@ -2,16 +2,16 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using NurseryHub.Permissions;
+using Microsoft.AspNetCore.Authorization;
+using NurseryHub.Security;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Nurseries;
 
-
+[Authorize(Roles = NurseryHubRoles.Admin)]
 public class NurseryAppService
     : CrudAppService<
             Nursery,
@@ -23,14 +23,16 @@ public class NurseryAppService
         INurseryAppService
 {
     private readonly NurseryMediaOptions _mediaOptions;
+    private readonly IRepository<NurseryBranch, Guid> _branchRepository;
 
     public NurseryAppService(
         IRepository<Nursery, Guid> repository,
+        IRepository<NurseryBranch, Guid> branchRepository,
         IOptions<NurseryMediaOptions> mediaOptions)
         : base(repository)
     {
+        _branchRepository = branchRepository;
         _mediaOptions = mediaOptions.Value;
-        
     }
 
 
@@ -58,6 +60,68 @@ public class NurseryAppService
         await Repository.UpdateAsync(entity);
 
         return MapToGetOutputDto(entity);
+    }
+
+    public override async Task<PagedResultDto<NurseryDto>> GetListAsync(PagedAndSortedResultRequestDto input)
+    {
+        var nurseries = await Repository.GetQueryableAsync();
+        var branches = await _branchRepository.GetQueryableAsync();
+
+        var query =
+            from nursery in nurseries
+            join branch in branches on nursery.Id equals branch.NurseryId into branchGroup
+            select new
+            {
+                nursery.Id,
+                nursery.Name,
+                nursery.PhoneNumber,
+                nursery.Email,
+                nursery.LogoUrl,
+                nursery.WebsiteUrl,
+                nursery.IsActive,
+                BranchCount = branchGroup.Count(),
+                nursery.CreationTime,
+                nursery.CreatorId,
+                nursery.LastModificationTime,
+                nursery.LastModifierId,
+                nursery.IsDeleted,
+                nursery.DeleterId,
+                nursery.DeletionTime,
+            };
+
+        var totalCount = await AsyncExecuter.CountAsync(query);
+        var rawItems = await AsyncExecuter.ToListAsync(
+            query.OrderBy(n => n.Name).Skip(input.SkipCount).Take(input.MaxResultCount));
+        var items = rawItems.Select(x => new NurseryDto
+        {
+            Id = x.Id,
+            Name = x.Name,
+            PhoneNumber = x.PhoneNumber,
+            Email = x.Email,
+            LogoUrl = ResolveLogoDisplayUrl(x.LogoUrl),
+            WebsiteUrl = x.WebsiteUrl,
+            IsActive = x.IsActive,
+            BranchCount = x.BranchCount,
+            CreationTime = x.CreationTime,
+            CreatorId = x.CreatorId,
+            LastModificationTime = x.LastModificationTime,
+            LastModifierId = x.LastModifierId,
+            IsDeleted = x.IsDeleted,
+            DeleterId = x.DeleterId,
+            DeletionTime = x.DeletionTime,
+        }).ToList();
+
+        return new PagedResultDto<NurseryDto>(totalCount, items);
+    }
+
+    public override async Task<NurseryDto> GetAsync(Guid id)
+    {
+        var entity = await Repository.GetAsync(id);
+        var branches = await _branchRepository.GetQueryableAsync();
+
+        var dto = MapToGetOutputDto(entity);
+        dto.BranchCount = await AsyncExecuter.CountAsync(branches.Where(x => x.NurseryId == id));
+        return dto;
     }
 
     protected override async Task<Nursery> MapToEntityAsync(CreateUpdateNurseryDto createInput)
@@ -95,6 +159,7 @@ public class NurseryAppService
             LogoUrl = ResolveLogoDisplayUrl(entity.LogoUrl),
             WebsiteUrl = entity.WebsiteUrl,
             IsActive = entity.IsActive,
+            BranchCount = 0,
             CreationTime = entity.CreationTime,
             CreatorId = entity.CreatorId,
             LastModificationTime = entity.LastModificationTime,

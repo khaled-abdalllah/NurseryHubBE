@@ -3,14 +3,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using NurseryHub.Locations;
-using NurseryHub.Permissions;
+using NurseryHub.Security;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Locations;
 
-[Authorize(NurseryHubPermissions.Cities.Default)]
+[Authorize(Roles = NurseryHubRoles.Admin)]
 public class CityAppService
     : CrudAppService<
             City,
@@ -29,11 +29,6 @@ public class CityAppService
         : base(repository)
     {
         _governorateRepository = governorateRepository;
-        GetPolicyName = NurseryHubPermissions.Cities.Default;
-        GetListPolicyName = NurseryHubPermissions.Cities.Default;
-        CreatePolicyName = NurseryHubPermissions.Cities.Create;
-        UpdatePolicyName = NurseryHubPermissions.Cities.Edit;
-        DeletePolicyName = NurseryHubPermissions.Cities.Delete;
     }
 
     protected override async Task<City> MapToEntityAsync(CreateUpdateCityDto createInput)
@@ -58,8 +53,6 @@ public class CityAppService
 
     public override async Task<PagedResultDto<CityDto>> GetListAsync(PagedAndSortedResultRequestDto input)
     {
-        await CheckGetListPolicyAsync();
-
         var cityQuery = await Repository.GetQueryableAsync();
         var govQuery = await _governorateRepository.GetQueryableAsync();
 
@@ -87,7 +80,6 @@ public class CityAppService
 
     public override async Task<CityDto> GetAsync(Guid id)
     {
-        await CheckGetPolicyAsync();
         var entity = await Repository.GetAsync(id);
         var gov = await _governorateRepository.GetAsync(entity.GovernorateId);
         return new CityDto
