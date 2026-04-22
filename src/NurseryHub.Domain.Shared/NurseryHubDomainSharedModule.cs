@@ -51,8 +51,8 @@ public class NurseryHubDomainSharedModule : AbpModule
 
             options.DefaultResourceType = typeof(NurseryHubResource);
             
-            options.Languages.Add(new LanguageInfo("ar", "ar", "Arabic")); 
-
+            options.Languages.Add(new LanguageInfo("ar", "ar", "العربية"));
+            options.Languages.Add(new LanguageInfo("en", "en", "English"));
         });
         
         Configure<AbpExceptionLocalizationOptions>(options =>

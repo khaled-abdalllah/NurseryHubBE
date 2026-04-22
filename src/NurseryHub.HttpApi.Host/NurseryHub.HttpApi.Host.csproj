@@ -41,6 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\NurseryHub.Application.Contracts\NurseryHub.Application.Contracts.csproj" />
     <ProjectReference Include="..\NurseryHub.Application\NurseryHub.Application.csproj" />
     <ProjectReference Include="..\NurseryHub.HttpApi\NurseryHub.HttpApi.csproj" />
     <ProjectReference Include="..\NurseryHub.EntityFrameworkCore\NurseryHub.EntityFrameworkCore.csproj" />

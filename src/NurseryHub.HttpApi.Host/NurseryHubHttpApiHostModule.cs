@@ -16,13 +16,14 @@ using OpenIddict.Server.AspNetCore;
 using NurseryHub.EntityFrameworkCore;
 using NurseryHub.MultiTenancy;
 using NurseryHub.HealthChecks;
+using NurseryHub.Nurseries;
+using Volo.Abp.AspNetCore.Mvc;
 using Microsoft.OpenApi;
 using Volo.Abp;
 using Volo.Abp.Studio;
 using Volo.Abp.Account;
 using Volo.Abp.Account.Web;
 using Volo.Abp.AspNetCore.MultiTenancy;
-using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Autofac;
 using Volo.Abp.Localization;
 using Volo.Abp.Modularity;
@@ -120,6 +121,10 @@ public class NurseryHubHttpApiHostModule : AbpModule
 
         ConfigureStudio(hostingEnvironment);
         ConfigureAuthentication(context);
+        Configure<AbpAspNetCoreMvcOptions>(options =>
+        {
+            options.ConventionalControllers.FormBodyBindingIgnoredTypes.Add(typeof(UploadNurseryLogoInput));
+        });
         ConfigureUrls(configuration);
         ConfigureBundles(hostingEnvironment);
         ConfigureConventionalControllers();

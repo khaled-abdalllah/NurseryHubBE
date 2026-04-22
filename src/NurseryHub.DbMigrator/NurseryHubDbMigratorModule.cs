@@ -7,7 +7,8 @@ namespace NurseryHub.DbMigrator;
 [DependsOn(
     typeof(AbpAutofacModule),
     typeof(NurseryHubEntityFrameworkCoreModule),
-    typeof(NurseryHubApplicationContractsModule)
+    typeof(NurseryHubApplicationContractsModule),
+    typeof(NurseryHubApplicationModule)
 )]
 public class NurseryHubDbMigratorModule : AbpModule
 {

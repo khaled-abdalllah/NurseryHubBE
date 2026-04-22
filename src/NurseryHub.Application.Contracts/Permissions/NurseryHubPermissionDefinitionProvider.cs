@@ -11,8 +11,20 @@ public class NurseryHubPermissionDefinitionProvider : PermissionDefinitionProvid
     {
         var myGroup = context.AddGroup(NurseryHubPermissions.GroupName);
 
-        //Define your own permissions here. Example:
-        //myGroup.AddPermission(NurseryHubPermissions.MyPermission1, L("Permission:MyPermission1"));
+        var nurseries = myGroup.AddPermission(NurseryHubPermissions.Nurseries.Default, L("Permission:Nurseries"));
+        nurseries.AddChild(NurseryHubPermissions.Nurseries.Create, L("Permission:Nurseries.Create"));
+        nurseries.AddChild(NurseryHubPermissions.Nurseries.Edit, L("Permission:Nurseries.Edit"));
+        nurseries.AddChild(NurseryHubPermissions.Nurseries.Delete, L("Permission:Nurseries.Delete"));
+
+        var governorates = myGroup.AddPermission(NurseryHubPermissions.Governorates.Default, L("Permission:Governorates"));
+        governorates.AddChild(NurseryHubPermissions.Governorates.Create, L("Permission:Governorates.Create"));
+        governorates.AddChild(NurseryHubPermissions.Governorates.Edit, L("Permission:Governorates.Edit"));
+        governorates.AddChild(NurseryHubPermissions.Governorates.Delete, L("Permission:Governorates.Delete"));
+
+        var cities = myGroup.AddPermission(NurseryHubPermissions.Cities.Default, L("Permission:Cities"));
+        cities.AddChild(NurseryHubPermissions.Cities.Create, L("Permission:Cities.Create"));
+        cities.AddChild(NurseryHubPermissions.Cities.Edit, L("Permission:Cities.Edit"));
+        cities.AddChild(NurseryHubPermissions.Cities.Delete, L("Permission:Cities.Delete"));
     }
 
     private static LocalizableString L(string name)

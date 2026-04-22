@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using NurseryHub.Locations;
+using NurseryHub.Nurseries;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.BlobStoring.Database.EntityFrameworkCore;
@@ -26,6 +28,12 @@ public class NurseryHubDbContext :
     IIdentityDbContext
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
+    public DbSet<Nursery> Nurseries { get; set; }
+    public DbSet<NurseryBranch> NurseryBranches { get; set; }
+    public DbSet<NurseryClass> NurseryClasses { get; set; }
+    public DbSet<UserBranch> UserBranches { get; set; }
+    public DbSet<Governorate> Governorates { get; set; }
+    public DbSet<City> Cities { get; set; }
 
 
     #region Entities from the modules
@@ -80,12 +88,6 @@ public class NurseryHubDbContext :
         builder.ConfigureBlobStoring();
         
         /* Configure your own tables/entities inside here */
-
-        //builder.Entity<YourEntity>(b =>
-        //{
-        //    b.ToTable(NurseryHubConsts.DbTablePrefix + "YourEntities", NurseryHubConsts.DbSchema);
-        //    b.ConfigureByConvention(); //auto configure for the base class props
-        //    //...
-        //});
+        builder.ConfigureNurseryHub();
     }
 }
