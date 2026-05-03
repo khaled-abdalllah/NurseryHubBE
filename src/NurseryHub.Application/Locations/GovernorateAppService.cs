@@ -48,6 +48,8 @@ public class GovernorateAppService
             Code = entity.Code,
             NameEn = entity.NameEn,
             NameAr = entity.NameAr,
+            CreationTime = entity.CreationTime,
+            CreatorId = entity.CreatorId,
         };
     }
 

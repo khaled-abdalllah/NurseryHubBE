@@ -124,6 +124,7 @@ public class NurseryHubHttpApiHostModule : AbpModule
         Configure<AbpAspNetCoreMvcOptions>(options =>
         {
             options.ConventionalControllers.FormBodyBindingIgnoredTypes.Add(typeof(UploadNurseryLogoInput));
+            options.ConventionalControllers.FormBodyBindingIgnoredTypes.Add(typeof(UploadStudentImageInput));
         });
         ConfigureUrls(configuration);
         ConfigureBundles(hostingEnvironment);
@@ -174,6 +175,7 @@ public class NurseryHubHttpApiHostModule : AbpModule
                 bundle =>
                 {
                     bundle.AddFiles("/global-styles.css");
+                    bundle.AddFiles("/login-page.css");
                 }
             );
 
@@ -305,6 +307,21 @@ public class NurseryHubHttpApiHostModule : AbpModule
         });
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
+
+        app.Use(async (httpContext, next) =>
+        {
+            var path = httpContext.Request.Path.Value ?? string.Empty;
+            if (path.Equals("/Account/Register", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/Account/Register/", StringComparison.OrdinalIgnoreCase))
+            {
+                var qs = httpContext.Request.QueryString;
+                httpContext.Response.Redirect("/Account/Login" + qs);
+                return;
+            }
+
+            await next();
+        });
+
         app.UseConfiguredEndpoints();
     }
 }

@@ -3,7 +3,7 @@ using Volo.Abp.Application.Dtos;
 
 namespace NurseryHub.Locations;
 
-public class CityDto : EntityDto<Guid>
+public class CityDto : CreationAuditedEntityDto<Guid>
 {
     public Guid GovernorateId { get; set; }
     public string? GovernorateNameEn { get; set; }

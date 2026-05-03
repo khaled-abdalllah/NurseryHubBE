@@ -1,8 +1,96 @@
+/* NurseryHub auth / OpenIddict host — align Lepton account UI with public portal identity */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-    --lpx-logo: url('/images/logo/leptonxlite/logo-light-thumbnail.png');
-    --lpx-logo-icon: url('/images/logo/leptonxlite/logo-light-thumbnail.png');
+  --nh-primary: #006e2f;
+  --nh-primary-container: #22c55e;
+  --nh-secondary: #0058be;
+  --nh-surface: #f3fcef;
+  --nh-on-background: #161d16;
+  --nh-on-surface-variant: #3d4a3d;
+  --bs-primary: #006e2f;
+  --bs-primary-rgb: 0, 110, 47;
+  --bs-link-color: #0058be;
+  --bs-link-hover-color: #004395;
+  --bs-body-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bs-body-bg: var(--nh-surface);
+  --bs-body-color: var(--nh-on-background);
+  --lpx-logo: url('/images/logo/leptonxlite/logo-light-thumbnail.png');
+  --lpx-logo-icon: url('/images/logo/leptonxlite/logo-light-thumbnail.png');
 }
-:root .abp-account-layout .lpx-brand-logo{
-    --lpx-logo: url('/images/logo/leptonxlite/logo-dark-thumbnail.png');
-    background-position: left;
+
+body {
+  font-family: var(--bs-body-font-family);
+  background-color: var(--nh-surface);
+  color: var(--nh-on-background);
+}
+
+.abp-account-layout,
+.lpx-account-layout {
+  background-color: var(--nh-surface);
+  background-image: radial-gradient(circle at top right, rgba(34, 197, 94, 0.08), transparent 42%),
+    radial-gradient(circle at bottom left, rgba(255, 142, 77, 0.06), transparent 42%);
+  min-height: 100vh;
+}
+
+:root .abp-account-layout .lpx-brand-logo {
+  --lpx-logo: url('/images/logo/leptonxlite/logo-dark-thumbnail.png');
+  background-position: left;
+}
+
+.card,
+.abp-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0, 110, 47, 0.08);
+  box-shadow: 0 4px 24px rgba(34, 197, 94, 0.06);
+}
+
+.btn-primary {
+  background-color: var(--nh-primary);
+  border-color: var(--nh-primary);
+  font-weight: 600;
+  border-radius: 9999px;
+  padding-inline: 1.5rem;
+  padding-block: 0.55rem;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #005321;
+  border-color: #005321;
+}
+
+.btn-outline-primary {
+  color: var(--nh-primary);
+  border-color: var(--nh-primary);
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--nh-primary);
+  border-color: var(--nh-primary);
+}
+
+.form-control:focus {
+  border-color: var(--nh-primary-container);
+  box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.2);
+}
+
+a:not(.btn) {
+  color: var(--nh-secondary);
+}
+
+a:not(.btn):hover {
+  color: #004395;
+}
+
+.text-primary {
+  color: var(--nh-primary) !important;
+}
+
+/* Self-registration is disabled; hide any leftover register affordances */
+a[href*='/Account/Register'],
+a[href*='/account/register'] {
+  display: none !important;
 }

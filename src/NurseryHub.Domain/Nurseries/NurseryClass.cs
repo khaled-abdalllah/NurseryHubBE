@@ -11,6 +11,7 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
 
     public Guid? TenantId { get; private set; }
     public Guid NurseryBranchId { get; private set; }
+    public Guid? GradeCategoryId { get; private set; }
     public string Name { get; private set; } = null!;
     public int Capacity { get; private set; }
     public int? MinAgeInMonths { get; private set; }
@@ -26,6 +27,7 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
         Guid id,
         Guid? tenantId,
         Guid nurseryBranchId,
+        Guid? gradeCategoryId,
         string name,
         int capacity,
         int? minAgeInMonths = null,
@@ -34,6 +36,7 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
     {
         TenantId = tenantId;
         NurseryBranchId = nurseryBranchId;
+        GradeCategoryId = gradeCategoryId;
         SetName(name);
         SetCapacity(capacity);
         SetAgeRange(minAgeInMonths, maxAgeInMonths);
@@ -43,6 +46,11 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
     public void SetName(string name)
     {
         Name = Check.NotNullOrWhiteSpace(name, nameof(name), MaxNameLength);
+    }
+
+    public void SetGradeCategory(Guid? gradeCategoryId)
+    {
+        GradeCategoryId = gradeCategoryId;
     }
 
     public void SetCapacity(int capacity)

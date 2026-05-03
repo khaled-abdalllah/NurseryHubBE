@@ -1,0 +1,559 @@
+/* NurseryHub account login — layout/visuals extracted from login design (split panel, soft minimal) */
+body.nh-login-body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.nh-login-shell {
+  --nh-login-bg: #f3fcef;
+  --nh-login-on: #161d16;
+  --nh-login-outline: #6d7b6c;
+  --nh-login-surface-low: #edf6ea;
+  --nh-login-primary: #006e2f;
+  --nh-login-primary-container: #22c55e;
+  --nh-login-on-primary-container: #004b1e;
+  --nh-login-hero-canvas: #fdfbf7;
+  --nh-login-secondary: #2170e4;
+  --nh-login-tertiary: #ff8e4d;
+  --nh-login-radius-xl: 1rem;
+  --nh-login-radius-2xl: 1.5rem;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--nh-login-on);
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.nh-login-shell *,
+.nh-login-shell *::before,
+.nh-login-shell *::after {
+  box-sizing: border-box;
+}
+
+.nh-login-main {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  background: #fff;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-shadow: none;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .nh-login-main {
+    flex-direction: row;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
+
+.nh-login-form-side {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  z-index: 2;
+}
+
+@media (min-width: 768px) {
+  .nh-login-form-side {
+    width: 50%;
+    flex: 1 1 50%;
+    min-height: 100%;
+    padding: 4rem;
+    align-self: stretch;
+  }
+}
+
+.nh-login-form-inner {
+  width: 100%;
+  max-width: min(28rem, 100%);
+  margin-inline: auto;
+}
+
+.nh-login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.nh-login-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.nh-login-brand-icon {
+  background: var(--nh-login-primary-container);
+  color: var(--nh-login-on-primary-container);
+  padding: 0.5rem;
+  border-radius: var(--nh-login-radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nh-login-brand-icon .material-symbols-outlined {
+  font-size: 1.75rem;
+}
+
+.nh-login-brand-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--nh-login-primary);
+  margin: 0;
+}
+
+.nh-login-heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.5rem;
+  color: var(--nh-login-on);
+}
+
+.nh-login-sub {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--nh-login-outline);
+  margin: 0;
+}
+
+.nh-login-alert {
+  border-radius: var(--nh-login-radius-xl);
+  margin-bottom: 1.25rem;
+}
+
+.nh-login-field {
+  margin-bottom: 1.5rem;
+}
+
+.nh-login-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #3d4a3d;
+  margin-bottom: 0.5rem;
+  margin-inline-start: 0.15rem;
+}
+
+.nh-login-input-wrap {
+  position: relative;
+}
+
+.nh-login-input-wrap .material-symbols-outlined.nh-login-input-icon {
+  position: absolute;
+  inset-inline-end: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nh-login-outline);
+  font-size: 1.25rem;
+  pointer-events: none;
+}
+
+.nh-login-input-wrap input.form-control {
+  width: 100%;
+  padding-block: 1rem;
+  padding-inline: 1rem 3rem;
+  border: none;
+  border-radius: var(--nh-login-radius-xl);
+  background: var(--nh-login-surface-low);
+  font-size: 1rem;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.nh-login-input-wrap input.form-control:focus {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--nh-login-primary);
+  outline: none;
+}
+
+.nh-login-password-wrap {
+  position: relative;
+}
+
+.nh-login-password-wrap input.form-control {
+  padding-inline-end: 3.5rem;
+  padding-inline-start: 3.5rem;
+}
+
+.nh-login-password-wrap #PasswordVisibilityButton {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  inset-inline-start: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--nh-login-outline);
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.nh-login-password-wrap #PasswordVisibilityButton:hover {
+  color: var(--nh-login-primary);
+}
+
+.nh-login-password-wrap .nh-login-input-icon {
+  inset-inline-start: 1rem;
+  inset-inline-end: auto;
+  z-index: 1;
+}
+
+.nh-login-password-wrap .nh-login-visibility-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+html[dir='rtl'] .nh-login-password-wrap #PasswordVisibilityButton {
+  right: auto;
+  left: 0.5rem;
+}
+
+html[dir='rtl'] .nh-login-password-wrap .nh-login-lock-icon {
+  left: auto;
+  right: 1rem;
+}
+
+html[dir='ltr'] .nh-login-password-wrap #PasswordVisibilityButton {
+  left: auto;
+  right: 0.5rem;
+}
+
+html[dir='ltr'] .nh-login-password-wrap .nh-login-lock-icon {
+  right: auto;
+  left: 1rem;
+}
+
+.nh-login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.nh-login-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: #3d4a3d;
+}
+
+.nh-login-remember:hover {
+  color: var(--nh-login-primary);
+}
+
+.nh-login-remember input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--nh-login-primary);
+}
+
+.nh-login-forgot {
+  font-weight: 600;
+  color: var(--nh-login-primary);
+  text-decoration: none;
+}
+
+.nh-login-forgot:hover {
+  text-decoration: underline;
+}
+
+.nh-login-submit {
+  width: 100%;
+  border: none;
+  border-radius: var(--nh-login-radius-xl);
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--nh-login-primary-container);
+  color: var(--nh-login-on-primary-container);
+  box-shadow: 0 10px 24px rgba(34, 197, 94, 0.2);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.nh-login-submit:hover {
+  transform: scale(1.02);
+}
+
+.nh-login-submit:active {
+  transform: scale(0.98);
+}
+
+.nh-login-external {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2ebde;
+}
+
+.nh-login-external h5 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.nh-login-external .btn {
+  border-radius: var(--nh-login-radius-xl);
+  font-weight: 600;
+}
+
+.nh-login-lang {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2ebde;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--nh-login-outline);
+}
+
+.nh-login-lang a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nh-login-lang a:hover {
+  color: var(--nh-login-primary);
+}
+
+.nh-login-lang .is-active {
+  color: var(--nh-login-primary);
+  font-weight: 700;
+}
+
+.nh-login-lang-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #bccbb9;
+}
+
+.nh-login-hero {
+  display: none;
+  width: 50%;
+  position: relative;
+  background: var(--nh-login-hero-canvas);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .nh-login-hero {
+    display: flex;
+    flex: 1 1 50%;
+    align-self: stretch;
+    min-height: 100%;
+  }
+}
+
+.nh-login-hero-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#22c55e 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.nh-login-hero-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 2rem 3rem;
+  text-align: center;
+}
+
+.nh-login-hero-deco {
+  position: absolute;
+  color: var(--nh-login-tertiary);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.nh-login-hero-deco.cloud {
+  inset-inline-end: 10%;
+  top: 12%;
+  font-size: 3rem;
+}
+
+.nh-login-hero-deco.eco {
+  inset-inline-start: 8%;
+  bottom: 18%;
+  font-size: 2.25rem;
+  color: var(--nh-login-primary);
+}
+
+.nh-login-hero-deco.star {
+  inset-inline-start: 12%;
+  top: 28%;
+  font-size: 2rem;
+  color: var(--nh-login-secondary);
+}
+
+.nh-login-hero-frame {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 2rem;
+}
+
+.nh-login-hero-frame img {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 1.75rem;
+  border: 8px solid #fff;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.18);
+}
+
+.nh-login-hero-copy h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--nh-login-on);
+}
+
+.nh-login-hero-copy p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #3d4a3d;
+  margin: 0 auto;
+  max-width: 26rem;
+}
+
+.nh-login-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+}
+
+.nh-login-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #bccbb9;
+}
+
+.nh-login-dots span:first-child {
+  background: var(--nh-login-primary);
+}
+
+.nh-login-float {
+  position: absolute;
+  inset-inline-end: 2rem;
+  bottom: 3rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  padding: 1rem 1.25rem;
+  border-radius: var(--nh-login-radius-2xl);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  max-width: min(340px, 90%);
+  text-align: start;
+}
+
+.nh-login-float-icon {
+  background: var(--nh-login-primary);
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nh-login-float-cap {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nh-login-outline);
+  margin: 0 0 0.15rem;
+}
+
+.nh-login-float-body {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--nh-login-on);
+}
+
+.nh-login-footer-mobile {
+  position: absolute;
+  bottom: 1rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--nh-login-outline);
+}
+
+@media (min-width: 768px) {
+  .nh-login-footer-mobile {
+    display: none;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}

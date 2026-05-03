@@ -67,6 +67,8 @@ public class CityAppService
                 Code = city.Code,
                 NameEn = city.NameEn,
                 NameAr = city.NameAr,
+                CreationTime = city.CreationTime,
+                CreatorId = city.CreatorId,
             };
 
         var totalCount = await AsyncExecuter.CountAsync(query);
@@ -90,6 +92,8 @@ public class CityAppService
             Code = entity.Code,
             NameEn = entity.NameEn,
             NameAr = entity.NameAr,
+            CreationTime = entity.CreationTime,
+            CreatorId = entity.CreatorId,
         };
     }
 }

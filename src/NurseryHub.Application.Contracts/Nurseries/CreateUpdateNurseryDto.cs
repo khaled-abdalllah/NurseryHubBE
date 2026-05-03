@@ -20,5 +20,9 @@ public class CreateUpdateNurseryDto
     [StringLength(NurseryConsts.MaxWebsiteUrlLength)]
     public string? WebsiteUrl { get; set; }
 
+    [StringLength(32)]
+    [RegularExpression("^[a-zA-Z0-9-]*$")]
+    public string? NurseryCode { get; set; }
+
     public bool IsActive { get; set; } = true;
 }

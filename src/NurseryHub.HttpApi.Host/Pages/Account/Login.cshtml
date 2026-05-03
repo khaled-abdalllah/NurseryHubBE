@@ -1,0 +1,205 @@
+@page
+@using System.Globalization
+@using System.Net
+@using Microsoft.AspNetCore.Http.Extensions
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Volo.Abp.Account.Localization
+@using Volo.Abp.Account.Settings
+@using Volo.Abp.Account.Web.Pages.Account
+@using Volo.Abp.Identity
+@using Volo.Abp.Settings
+@using Microsoft.Extensions.Localization
+@model LoginModel
+@inject IHtmlLocalizer<AccountResource> L
+@inject IStringLocalizer<NurseryHubResource> NhL
+@inject ISettingProvider SettingProvider
+@{
+    Layout = "~/Themes/LeptonXLite/Layouts/NurseryHubLoginLayout.cshtml";
+    ViewData["Title"] = L["Login"].ToString();
+    var ui = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var currentReturnUrl = WebUtility.UrlEncode(Request.GetEncodedPathAndQuery());
+    var nurseryName = Request.Query["__tenant"].ToString();
+    string LoginLangUrl(string culture) =>
+        Url.Content($"~/Abp/Languages/Switch?culture={culture}&uiCulture={culture}&returnUrl={currentReturnUrl}")!;
+}
+
+@section styles
+{
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+}
+
+@section scripts
+{
+    <abp-script-bundle name="@typeof(LoginModel).FullName">
+        <abp-script src="/Pages/Account/Login.js" />
+        <abp-script src="/account-login-toggle.js" />
+    </abp-script-bundle>
+}
+
+<div class="nh-login-shell">
+    <main class="nh-login-main">
+        <section class="nh-login-form-side">
+            <div class="nh-login-form-inner">
+                <header class="nh-login-brand">
+                    <div class="nh-login-brand-row">
+                        <div class="nh-login-brand-icon" aria-hidden="true">
+                            <span class="material-symbols-outlined">child_care</span>
+                        </div>
+                        <h1 class="nh-login-brand-title">@NhL["AppName"]</h1>
+                    </div>
+                    <h2 class="nh-login-heading">@NhL["LoginPage:WelcomeBack"]</h2>
+                    <p class="nh-login-sub">@NhL["LoginPage:Subtitle"]</p>
+                </header>
+
+                @if (Model.ShowRequireMigrateSeedMessage)
+                {
+                    <div class="alert alert-danger nh-login-alert">
+                        <h4 class="alert-heading">@L["RequireMigrateSeedTitle"]</h4>
+                        <p class="mb-0">@L["RequireMigrateSeedMessage"]</p>
+                    </div>
+                }
+
+
+
+                @if (Model.EnableLocalLogin)
+                {
+                    <form method="post" id="LoginForm">
+                        <div class="nh-login-field">
+                            <label for="NurseryCodeInput" class="nh-login-label">@NhL["LoginPage:NurseryCodeLabel"]</label>
+                            <div class="nh-login-input-wrap">
+                                <span class="material-symbols-outlined nh-login-input-icon" aria-hidden="true">apartment</span>
+                                <input id="NurseryCodeInput"
+                                       name="__tenant"
+                                       class="form-control"
+                                       value="@nurseryName"
+                                       autocomplete="organization"
+                                       placeholder="@NhL["LoginPage:NurseryCodePlaceholder"]" />
+                            </div>
+                        </div>
+
+                        <div class="nh-login-field">
+                            <label asp-for="LoginInput.UserNameOrEmailAddress" class="nh-login-label"></label>
+                            <div class="nh-login-input-wrap">
+                                <span class="material-symbols-outlined nh-login-input-icon" aria-hidden="true">mail</span>
+                                <input asp-for="LoginInput.UserNameOrEmailAddress" class="form-control" autocomplete="username" />
+                            </div>
+                            <span asp-validation-for="LoginInput.UserNameOrEmailAddress" class="text-danger small d-block mt-1"></span>
+                        </div>
+
+                        <div class="nh-login-field">
+                            <label asp-for="LoginInput.Password" class="nh-login-label"></label>
+                            <div class="nh-login-input-wrap nh-login-password-wrap">
+                                <span class="material-symbols-outlined nh-login-input-icon nh-login-lock-icon" aria-hidden="true">lock</span>
+                                <input type="password"
+                                       class="form-control"
+                                       autocomplete="current-password"
+                                       maxlength="@IdentityUserConsts.MaxPasswordLength"
+                                       asp-for="LoginInput.Password" />
+                                <button class="btn btn-link p-0"
+                                        type="button"
+                                        id="PasswordVisibilityButton"
+                                        aria-label="@L["ShowPassword"]"
+                                        data-show-label="@L["ShowPassword"]"
+                                        data-hide-label="@L["HidePassword"]">
+                                    <span class="material-symbols-outlined nh-login-visibility-icon" aria-hidden="true">visibility_off</span>
+                                </button>
+                            </div>
+                            <span asp-validation-for="LoginInput.Password" class="text-danger small d-block mt-1"></span>
+                        </div>
+
+                        <div class="nh-login-row">
+                            <label class="nh-login-remember mb-0">
+                                <input asp-for="LoginInput.RememberMe" />
+                                <span>@L["RememberMe"]</span>
+                            </label>
+                            <a class="nh-login-forgot"
+                               href="@Url.Page("./ForgotPassword", new { returnUrl = Model.ReturnUrl, returnUrlHash = Model.ReturnUrlHash })">@L["ForgotPassword"]</a>
+                        </div>
+
+                        <button type="submit" class="nh-login-submit" name="Action" value="Login">
+                            <span class="material-symbols-outlined" aria-hidden="true">login</span>
+                            @L["Login"]
+                        </button>
+
+                        @if (Model.ShowCancelButton)
+                        {
+                            <button type="submit"
+                                    class="btn btn-outline-secondary w-100 mt-3 rounded-3 py-3 fw-semibold"
+                                    formnovalidate="formnovalidate"
+                                    name="Action"
+                                    value="Cancel">
+                                @L["Cancel"]
+                            </button>
+                        }
+                    </form>
+                }
+
+                @if (Model.VisibleExternalProviders.Any())
+                {
+                    <div class="nh-login-external">
+                        <h5>@L["OrLoginWith"]</h5>
+                        <form asp-page="./Login"
+                              asp-page-handler="ExternalLogin"
+                              asp-route-returnUrl="@Model.ReturnUrl"
+                              asp-route-returnUrlHash="@Model.ReturnUrlHash"
+                              method="post">
+                            @foreach (var provider in Model.VisibleExternalProviders)
+                            {
+                                <button type="submit"
+                                        class="btn btn-primary m-1"
+                                        name="provider"
+                                        value="@provider.AuthenticationScheme"
+                                        title="@L["LogInUsingYourProviderAccount", provider.DisplayName]">
+                                    @provider.DisplayName
+                                </button>
+                            }
+                        </form>
+                    </div>
+                }
+
+                @if (!Model.EnableLocalLogin && !Model.VisibleExternalProviders.Any())
+                {
+                    <div class="alert alert-warning nh-login-alert">
+                        <strong>@L["InvalidLoginRequest"]</strong>
+                        @L["ThereAreNoLoginSchemesConfiguredForThisClient"]
+                    </div>
+                }
+
+                <div class="nh-login-lang">
+                    <a href="@LoginLangUrl("en")"
+                       class="@(ui == "en" ? "is-active" : null)">English</a>
+                    <span class="nh-login-lang-dot" aria-hidden="true"></span>
+                    <a href="@LoginLangUrl("ar")"
+                       class="@(ui.StartsWith("ar") ? "is-active" : null)">العربية</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="nh-login-hero" aria-hidden="true">
+            <div class="nh-login-hero-pattern"></div>
+            <span class="material-symbols-outlined nh-login-hero-deco cloud">cloud</span>
+            <span class="material-symbols-outlined nh-login-hero-deco eco">eco</span>
+            <span class="material-symbols-outlined nh-login-hero-deco star">star</span>
+            <div class="nh-login-hero-inner">
+                <div class="nh-login-hero-frame">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5FhPBQUbM_zAEPeyeMjuT0Y-Qj5Dovofstt1tQGSJrVdurHLsqFHDvpf9Hn_15Ec5Qc_uuziy35Z_ELlmm5Bvr13D6QYq3gbDvnOWn1RTzSvIDm41ZYLFQOIjXnslizEdkcFbWI1Unob-nEvSxeo3HPHPY7mVg6RWIXjk3bWhxS8MuWoSpIbmy9UZfUM-KsW4Lj5z-0yvJ2iCCwD9wvhClfYBUaPIjqFiZTB88egK0jCWN3MksZppJxjvyXXers-VrG9LbouvzeWm"
+                         alt=""
+                         width="420"
+                         height="315" />
+                </div>
+                <div class="nh-login-hero-copy">
+                    <h3>@NhL["LoginPage:HeroTitle"]</h3>
+                    <p>@NhL["LoginPage:HeroBody"]</p>
+                    <div class="nh-login-dots" aria-hidden="true">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="nh-login-footer-mobile">
+            © @DateTime.UtcNow.Year @NhL["AppName"]. @NhL["LoginPage:FooterShort"]
+        </footer>
+    </main>
+</div>

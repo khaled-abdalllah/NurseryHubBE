@@ -98,11 +98,75 @@ public static class NurseryHubDbContextModelCreatingExtensions
             b.Property(x => x.IsActive).HasDefaultValue(true);
 
             b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.Name });
+            b.HasIndex(x => new { x.TenantId, x.GradeCategoryId });
 
             b.HasOne<NurseryBranch>()
                 .WithMany()
                 .HasForeignKey(x => x.NurseryBranchId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne<GradeCategory>()
+                .WithMany()
+                .HasForeignKey(x => x.GradeCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<GradeCategory>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "GradeCategories", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Name).IsRequired().HasMaxLength(GradeCategory.MaxNameLength);
+            b.Property(x => x.Icon).IsRequired().HasMaxLength(GradeCategory.MaxIconLength);
+            b.Property(x => x.ColorToken).IsRequired().HasMaxLength(GradeCategory.MaxColorTokenLength);
+            b.Property(x => x.Description).HasMaxLength(GradeCategory.MaxDescriptionLength);
+            b.Property(x => x.IsActive).HasDefaultValue(true);
+
+            b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+        });
+
+        builder.Entity<Student>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "Students", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.FullName).IsRequired().HasMaxLength(Student.MaxFullNameLength);
+            b.Property(x => x.Gender).IsRequired().HasMaxLength(16);
+            b.Property(x => x.BloodType).HasMaxLength(Student.MaxBloodTypeLength);
+            b.Property(x => x.Religion).HasMaxLength(Student.MaxReligionLength);
+            b.Property(x => x.HomeAddress).HasMaxLength(Student.MaxHomeAddressLength);
+            b.Property(x => x.FatherName).IsRequired().HasMaxLength(Student.MaxFullNameLength);
+            b.Property(x => x.FatherIdentityNumber).IsRequired().HasMaxLength(Student.MaxIdentityNumberLength);
+            b.Property(x => x.FatherPhoneNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
+            b.Property(x => x.MotherName).IsRequired().HasMaxLength(Student.MaxFullNameLength);
+            b.Property(x => x.MotherIdentityNumber).IsRequired().HasMaxLength(Student.MaxIdentityNumberLength);
+            b.Property(x => x.MotherPhoneNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
+            b.Property(x => x.EmergencyContactNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
+            b.Property(x => x.HealthNotes).HasMaxLength(Student.MaxHealthNotesLength);
+            b.Property(x => x.DietaryRestrictions).HasMaxLength(Student.MaxDietaryRestrictionsLength);
+            b.Property(x => x.ToiletTrainingStatus).HasMaxLength(Student.MaxToiletTrainingStatusLength);
+            b.Property(x => x.AttendsSunday).HasDefaultValue(false);
+            b.Property(x => x.AttendsMonday).HasDefaultValue(false);
+            b.Property(x => x.AttendsTuesday).HasDefaultValue(false);
+            b.Property(x => x.AttendsWednesday).HasDefaultValue(false);
+            b.Property(x => x.AttendsThursday).HasDefaultValue(false);
+            b.Property(x => x.AttendsFriday).HasDefaultValue(false);
+            b.Property(x => x.AttendsSaturday).HasDefaultValue(false);
+            b.Property(x => x.MedicalNotes).HasMaxLength(Student.MaxMedicalNotesLength);
+            b.Property(x => x.IsActive).HasDefaultValue(true);
+
+            b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.FullName });
+            b.HasIndex(x => new { x.TenantId, x.NurseryClassId });
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne<NurseryClass>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryClassId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         builder.Entity<UserBranch>(b =>

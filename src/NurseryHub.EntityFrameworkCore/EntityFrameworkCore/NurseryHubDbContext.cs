@@ -30,7 +30,9 @@ public class NurseryHubDbContext :
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
     public DbSet<Nursery> Nurseries { get; set; }
     public DbSet<NurseryBranch> NurseryBranches { get; set; }
+    public DbSet<GradeCategory> GradeCategories { get; set; }
     public DbSet<NurseryClass> NurseryClasses { get; set; }
+    public DbSet<Student> Students { get; set; }
     public DbSet<UserBranch> UserBranches { get; set; }
     public DbSet<Governorate> Governorates { get; set; }
     public DbSet<City> Cities { get; set; }

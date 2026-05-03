@@ -30,6 +30,16 @@ public class NurseryHubPermissionDefinitionProvider : PermissionDefinitionProvid
         nurseryBranches.AddChild(NurseryHubPermissions.NurseryBranches.Create, L("Permission:NurseryBranches.Create"));
         nurseryBranches.AddChild(NurseryHubPermissions.NurseryBranches.Edit, L("Permission:NurseryBranches.Edit"));
         nurseryBranches.AddChild(NurseryHubPermissions.NurseryBranches.Delete, L("Permission:NurseryBranches.Delete"));
+
+        var students = myGroup.AddPermission(NurseryHubPermissions.Students.Default, L("Permission:Students"));
+        students.AddChild(NurseryHubPermissions.Students.Create, L("Permission:Students.Create"));
+        students.AddChild(NurseryHubPermissions.Students.Edit, L("Permission:Students.Edit"));
+        students.AddChild(NurseryHubPermissions.Students.Delete, L("Permission:Students.Delete"));
+
+        var gradeCategories = myGroup.AddPermission(NurseryHubPermissions.GradeCategories.Default, L("Permission:GradeCategories"));
+        gradeCategories.AddChild(NurseryHubPermissions.GradeCategories.Create, L("Permission:GradeCategories.Create"));
+        gradeCategories.AddChild(NurseryHubPermissions.GradeCategories.Edit, L("Permission:GradeCategories.Edit"));
+        gradeCategories.AddChild(NurseryHubPermissions.GradeCategories.Delete, L("Permission:GradeCategories.Delete"));
     }
 
     private static LocalizableString L(string name)

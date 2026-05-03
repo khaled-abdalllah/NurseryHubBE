@@ -1,0 +1,20 @@
+@using System.Globalization
+@{
+    var rtl = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+    var lang = CultureInfo.CurrentUICulture.Name;
+}
+<!DOCTYPE html>
+<html lang="@lang" dir="@(rtl ? "rtl" : "ltr")">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <abp-style-bundle name="@LeptonXLiteThemeBundles.Styles.Global" />
+    @await RenderSectionAsync("styles", required: false)
+</head>
+<body class="nh-login-body">
+    @RenderBody()
+    <abp-script-bundle name="@LeptonXLiteThemeBundles.Scripts.Global" />
+    @await RenderSectionAsync("scripts", required: false)
+</body>
+</html>

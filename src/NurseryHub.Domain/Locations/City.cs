@@ -1,10 +1,10 @@
 using System;
 using Volo.Abp;
-using Volo.Abp.Domain.Entities;
+using Volo.Abp.Domain.Entities.Auditing;
 
 namespace NurseryHub.Locations;
 
-public class City : Entity<Guid>
+public class City : CreationAuditedEntity<Guid>
 {
     public const int MaxNameLength = 128;
     public const int MaxCodeLength = 16;
