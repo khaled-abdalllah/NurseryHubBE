@@ -5,6 +5,7 @@ namespace NurseryHub.Nurseries;
 
 public class GradeCategoryDto : FullAuditedEntityDto<Guid>
 {
+    public Guid NurseryBranchId { get; set; }
     public string Name { get; set; } = null!;
     public string Icon { get; set; } = null!;
     public string ColorToken { get; set; } = null!;

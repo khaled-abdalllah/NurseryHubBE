@@ -55,8 +55,7 @@ public class NurseryAppService
     public override async Task<NurseryDto> CreateAsync(CreateUpdateNurseryDto input)
     {
         var tenant = await CreateTenantForNurseryAsync(input.NurseryCode);
-        var nursery = await Repository.InsertAsync(
-            new Nursery(
+        var nursery = new Nursery(
                 GuidGenerator.Create(),
                 tenant.Id,
                 input.Name,
@@ -64,8 +63,12 @@ public class NurseryAppService
                 input.Email,
                 logoUrl: null,
                 input.WebsiteUrl,
-                input.IsActive),
-            autoSave: true);
+                input.IsActive)
+        {
+            CreatorId = CurrentUser.Id
+        };
+
+        nursery = await Repository.InsertAsync(nursery, autoSave: true);
 
         var dto = MapToGetOutputDto(nursery);
         dto.NurseryCode = tenant.Name;
@@ -252,7 +255,10 @@ public class NurseryAppService
                 createInput.Email,
                 logoUrl: null,
                 createInput.WebsiteUrl,
-                createInput.IsActive));
+                createInput.IsActive)
+            {
+                CreatorId = CurrentUser.Id
+            });
     }
 
     protected override async Task MapToEntityAsync(CreateUpdateNurseryDto updateInput, Nursery entity)

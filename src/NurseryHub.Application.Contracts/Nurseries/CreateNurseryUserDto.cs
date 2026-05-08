@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace NurseryHub.Nurseries;
@@ -16,4 +18,7 @@ public class CreateNurseryUserDto
     [Required]
     [StringLength(64)]
     public string Role { get; set; } = null!;
+
+    /// <summary>Required for teacher and branchManager; ignored for nurseryAdmin (all branches are assigned).</summary>
+    public List<Guid>? BranchIds { get; set; }
 }

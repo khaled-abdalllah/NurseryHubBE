@@ -1,9 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 
+using System;
+
 namespace NurseryHub.Nurseries;
 
 public class CreateUpdateGradeCategoryDto
 {
+    [Required]
+    public Guid NurseryBranchId { get; set; }
+
     [Required]
     [StringLength(GradeCategoryConsts.MaxNameLength)]
     public string Name { get; set; } = null!;

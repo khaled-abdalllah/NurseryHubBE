@@ -33,6 +33,13 @@ public class NurseryHubDbContext :
     public DbSet<GradeCategory> GradeCategories { get; set; }
     public DbSet<NurseryClass> NurseryClasses { get; set; }
     public DbSet<Student> Students { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<Expense> Expenses { get; set; }
+    public DbSet<Attendance> Attendances { get; set; }
+    public DbSet<DailyFollowupBook> DailyFollowupBooks { get; set; }
+    public DbSet<DailyFollowupSubjectEntry> DailyFollowupSubjectEntries { get; set; }
+    public DbSet<DailyFollowupActivityEntry> DailyFollowupActivityEntries { get; set; }
+    public DbSet<DailyFollowupMealEntry> DailyFollowupMealEntries { get; set; }
     public DbSet<UserBranch> UserBranches { get; set; }
     public DbSet<Governorate> Governorates { get; set; }
     public DbSet<City> Cities { get; set; }

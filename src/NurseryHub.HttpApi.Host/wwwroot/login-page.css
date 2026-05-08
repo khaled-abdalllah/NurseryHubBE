@@ -168,20 +168,29 @@ body.nh-login-body {
   position: relative;
 }
 
+/* Icon placement uses physical left/right under html[dir] so theme LTR wrappers cannot flip logical inset away from the page direction. */
 .nh-login-input-wrap .material-symbols-outlined.nh-login-input-icon {
   position: absolute;
-  inset-inline-end: 1rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--nh-login-outline);
   font-size: 1.25rem;
   pointer-events: none;
+  z-index: 1;
+}
+
+html[dir='ltr'] .nh-login-input-wrap:not(.nh-login-password-wrap) .nh-login-input-icon {
+  left: 1rem;
+  right: auto;
+}
+
+html[dir='rtl'] .nh-login-input-wrap:not(.nh-login-password-wrap) .nh-login-input-icon {
+  right: 1rem;
+  left: auto;
 }
 
 .nh-login-input-wrap input.form-control {
   width: 100%;
-  padding-block: 1rem;
-  padding-inline: 1rem 3rem;
   border: none;
   border-radius: var(--nh-login-radius-xl);
   background: var(--nh-login-surface-low);
@@ -189,6 +198,19 @@ body.nh-login-body {
   transition:
     background-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+/* Extra padding on the icon (inline-start) side; theme .form-control cannot strip one side only if we set both explicitly. */
+html[dir='ltr'] .nh-login-input-wrap:not(.nh-login-password-wrap) input.form-control {
+  padding-block: 1rem;
+  padding-left: 3rem;
+  padding-right: 1rem;
+}
+
+html[dir='rtl'] .nh-login-input-wrap:not(.nh-login-password-wrap) input.form-control {
+  padding-block: 1rem;
+  padding-left: 1rem;
+  padding-right: 3rem;
 }
 
 .nh-login-input-wrap input.form-control:focus {
@@ -202,14 +224,25 @@ body.nh-login-body {
 }
 
 .nh-login-password-wrap input.form-control {
-  padding-inline-end: 3.5rem;
-  padding-inline-start: 3.5rem;
+  position: relative;
+  z-index: 0;
+}
+
+html[dir='ltr'] .nh-login-password-wrap input.form-control {
+  padding-block: 1rem;
+  padding-left: 3.5rem;
+  padding-right: 3.5rem;
+}
+
+/* RTL: lock at inline start (physical right), visibility toggle at inline end (physical left). */
+html[dir='rtl'] .nh-login-password-wrap input.form-control {
+  padding-block: 1rem;
+  padding-left: 3.5rem;
+  padding-right: 3.5rem;
 }
 
 .nh-login-password-wrap #PasswordVisibilityButton {
   position: absolute;
-  inset-inline-end: 0.5rem;
-  inset-inline-start: auto;
   top: 50%;
   transform: translateY(-50%);
   border: none;
@@ -222,32 +255,9 @@ body.nh-login-body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 3;
-}
-
-.nh-login-password-wrap #PasswordVisibilityButton:hover {
-  color: var(--nh-login-primary);
-}
-
-.nh-login-password-wrap .nh-login-input-icon {
-  inset-inline-start: 1rem;
-  inset-inline-end: auto;
-  z-index: 1;
-}
-
-.nh-login-password-wrap .nh-login-visibility-icon {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-html[dir='rtl'] .nh-login-password-wrap #PasswordVisibilityButton {
-  right: auto;
-  left: 0.5rem;
-}
-
-html[dir='rtl'] .nh-login-password-wrap .nh-login-lock-icon {
-  left: auto;
-  right: 1rem;
+  z-index: 4;
+  pointer-events: auto;
+  flex-shrink: 0;
 }
 
 html[dir='ltr'] .nh-login-password-wrap #PasswordVisibilityButton {
@@ -255,9 +265,30 @@ html[dir='ltr'] .nh-login-password-wrap #PasswordVisibilityButton {
   right: 0.5rem;
 }
 
-html[dir='ltr'] .nh-login-password-wrap .nh-login-lock-icon {
+html[dir='rtl'] .nh-login-password-wrap #PasswordVisibilityButton {
   right: auto;
+  left: 0.5rem;
+}
+
+.nh-login-password-wrap #PasswordVisibilityButton:hover {
+  color: var(--nh-login-primary);
+}
+
+html[dir='ltr'] .nh-login-password-wrap .nh-login-lock-icon {
   left: 1rem;
+  right: auto;
+  z-index: 2;
+}
+
+html[dir='rtl'] .nh-login-password-wrap .nh-login-lock-icon {
+  left: auto;
+  right: 1rem;
+  z-index: 2;
+}
+
+.nh-login-password-wrap .nh-login-visibility-icon {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .nh-login-row {

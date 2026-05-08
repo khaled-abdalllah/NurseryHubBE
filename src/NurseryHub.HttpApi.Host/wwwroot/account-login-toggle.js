@@ -5,7 +5,7 @@
     if (button) {
       var wrap = button.closest(".nh-login-password-wrap");
       if (wrap) {
-        var input = wrap.querySelector("input[name$='Password'], input[id$='Password']");
+        var input = wrap.querySelector("input.form-control");
         if (input) {
           var icon = button.querySelector(".nh-login-visibility-icon");
           var showLabel = button.getAttribute("data-show-label") || "Show password";

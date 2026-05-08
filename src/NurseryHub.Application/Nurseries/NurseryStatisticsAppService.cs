@@ -5,59 +5,70 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using NurseryHub.Locations;
-using NurseryHub.Permissions;
+using NurseryHub.Security;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.MultiTenancy;
 
 namespace NurseryHub.Nurseries;
 
-
 public class NurseryStatisticsAppService : ApplicationService, INurseryStatisticsAppService
 {
+    private readonly IDataFilter _dataFilter;
     private readonly IRepository<Nursery, Guid> _nurseryRepository;
     private readonly IRepository<NurseryBranch, Guid> _branchRepository;
     private readonly IRepository<NurseryClass, Guid> _classRepository;
+    private readonly IRepository<Student, Guid> _studentRepository;
     private readonly IRepository<Governorate, Guid> _governorateRepository;
 
     public NurseryStatisticsAppService(
+        IDataFilter dataFilter,
         IRepository<Nursery, Guid> nurseryRepository,
         IRepository<NurseryBranch, Guid> branchRepository,
         IRepository<NurseryClass, Guid> classRepository,
+        IRepository<Student, Guid> studentRepository,
         IRepository<Governorate, Guid> governorateRepository)
     {
+        _dataFilter = dataFilter;
         _nurseryRepository = nurseryRepository;
         _branchRepository = branchRepository;
         _classRepository = classRepository;
+        _studentRepository = studentRepository;
         _governorateRepository = governorateRepository;
     }
 
+    [Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
     public virtual async Task<NurseryStatisticsDto> GetStatisticsAsync()
     {
-        var nurseryQuery = await _nurseryRepository.GetQueryableAsync();
-        var branchQuery = await _branchRepository.GetQueryableAsync();
-        var classQuery = await _classRepository.GetQueryableAsync();
-        var governorateQuery = await _governorateRepository.GetQueryableAsync();
-
-        var totalNurseries = await AsyncExecuter.CountAsync(nurseryQuery);
-        var activeNurseries = await AsyncExecuter.CountAsync(nurseryQuery.Where(n => n.IsActive));
-        var inactiveNurseries = totalNurseries - activeNurseries;
-
-        var totalBranches = await AsyncExecuter.CountAsync(branchQuery);
-        var totalClasses = await AsyncExecuter.CountAsync(classQuery);
-
-        var newByMonth = await BuildMonthlyNurseryCreationsAsync(nurseryQuery);
-        var byGov = await BuildBranchesByGovernorateAsync(branchQuery, governorateQuery);
-
-        return new NurseryStatisticsDto
+        using (_dataFilter.Disable<IMultiTenant>())
         {
-            TotalNurseries = totalNurseries,
-            ActiveNurseries = activeNurseries,
-            InactiveNurseries = inactiveNurseries,
-            TotalBranches = totalBranches,
-            TotalClasses = totalClasses,
-            NewNurseriesByMonth = newByMonth,
-            BranchesByGovernorate = byGov,
-        };
+            var nurseryQuery = await _nurseryRepository.GetQueryableAsync();
+            var branchQuery = await _branchRepository.GetQueryableAsync();
+            var classQuery = await _classRepository.GetQueryableAsync();
+            var governorateQuery = await _governorateRepository.GetQueryableAsync();
+
+            var totalNurseries = await AsyncExecuter.CountAsync(nurseryQuery);
+            var activeNurseries = await AsyncExecuter.CountAsync(nurseryQuery.Where(n => n.IsActive));
+            var inactiveNurseries = totalNurseries - activeNurseries;
+
+            var totalBranches = await AsyncExecuter.CountAsync(branchQuery);
+            var totalClasses = await AsyncExecuter.CountAsync(classQuery);
+
+            var newByMonth = await BuildMonthlyNurseryCreationsAsync(nurseryQuery);
+            var byGov = await BuildBranchesByGovernorateAsync(branchQuery, governorateQuery);
+
+            return new NurseryStatisticsDto
+            {
+                TotalNurseries = totalNurseries,
+                ActiveNurseries = activeNurseries,
+                InactiveNurseries = inactiveNurseries,
+                TotalBranches = totalBranches,
+                TotalClasses = totalClasses,
+                NewNurseriesByMonth = newByMonth,
+                BranchesByGovernorate = byGov,
+            };
+        }
     }
 
     private async Task<List<NurseryMonthlySeriesItemDto>> BuildMonthlyNurseryCreationsAsync(
@@ -112,5 +123,48 @@ public class NurseryStatisticsAppService : ApplicationService, INurseryStatistic
                 BranchCount = x.Count,
             })
             .ToList();
+    }
+
+    [Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+    public virtual async Task<NurseryClassBranchStatisticsDto> GetBranchClassStatisticsAsync(Guid nurseryBranchId)
+    {
+        if (nurseryBranchId == Guid.Empty)
+        {
+            return new NurseryClassBranchStatisticsDto();
+        }
+
+        var classes = await _classRepository.GetQueryableAsync();
+        var students = await _studentRepository.GetQueryableAsync();
+
+        var branchClasses = classes.Where(c => c.NurseryBranchId == nurseryBranchId);
+        var totalClasses = await AsyncExecuter.CountAsync(branchClasses);
+
+        var totalEnrollments = await AsyncExecuter.CountAsync(
+            students.Where(s => s.NurseryBranchId == nurseryBranchId && s.NurseryClassId != null));
+
+        var rows = await AsyncExecuter.ToListAsync(
+            from c in branchClasses
+            let enrolled = students.Count(s => s.NurseryClassId == c.Id)
+            select new { c.Capacity, Enrolled = enrolled });
+
+        var average = 0;
+        if (rows.Count > 0)
+        {
+            var percents = rows
+                .Where(x => x.Capacity > 0)
+                .Select(x => (double)x.Enrolled / x.Capacity * 100d)
+                .ToList();
+            if (percents.Count > 0)
+            {
+                average = (int)Math.Round(percents.Average());
+            }
+        }
+
+        return new NurseryClassBranchStatisticsDto
+        {
+            TotalClasses = totalClasses,
+            TotalEnrollments = totalEnrollments,
+            AverageCapacityUtilizationPercent = average,
+        };
     }
 }

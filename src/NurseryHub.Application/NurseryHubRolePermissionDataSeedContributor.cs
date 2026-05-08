@@ -38,6 +38,7 @@ public class NurseryHubRolePermissionDataSeedContributor : IDataSeedContributor,
                      NurseryHubRoles.Admin,
                      NurseryHubRoles.NurseryAdmin,
                      NurseryHubRoles.Teacher,
+                     NurseryHubRoles.Accountant,
                      NurseryHubRoles.BranchManager,
                      NurseryHubRoles.Student,
                      NurseryHubRoles.Parent,
@@ -81,6 +82,10 @@ public class NurseryHubRolePermissionDataSeedContributor : IDataSeedContributor,
             NurseryHubPermissions.GradeCategories.Create,
             NurseryHubPermissions.GradeCategories.Edit,
             NurseryHubPermissions.GradeCategories.Delete,
+            NurseryHubPermissions.NurseryClasses.Default,
+            NurseryHubPermissions.NurseryClasses.Create,
+            NurseryHubPermissions.NurseryClasses.Edit,
+            NurseryHubPermissions.NurseryClasses.Delete,
         };
 
         await _permissionDataSeeder.SeedAsync(

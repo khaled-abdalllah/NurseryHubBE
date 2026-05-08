@@ -94,6 +94,7 @@ public static class NurseryHubDbContextModelCreatingExtensions
             b.ConfigureByConvention();
 
             b.Property(x => x.Name).IsRequired().HasMaxLength(NurseryClass.MaxNameLength);
+            b.Property(x => x.Description).HasMaxLength(NurseryClass.MaxDescriptionLength);
             b.Property(x => x.Capacity).IsRequired();
             b.Property(x => x.IsActive).HasDefaultValue(true);
 
@@ -116,13 +117,20 @@ public static class NurseryHubDbContextModelCreatingExtensions
             b.ToTable(NurseryHubConsts.DbTablePrefix + "GradeCategories", NurseryHubConsts.DbSchema);
             b.ConfigureByConvention();
 
+            b.Property(x => x.NurseryBranchId).IsRequired();
             b.Property(x => x.Name).IsRequired().HasMaxLength(GradeCategory.MaxNameLength);
             b.Property(x => x.Icon).IsRequired().HasMaxLength(GradeCategory.MaxIconLength);
             b.Property(x => x.ColorToken).IsRequired().HasMaxLength(GradeCategory.MaxColorTokenLength);
             b.Property(x => x.Description).HasMaxLength(GradeCategory.MaxDescriptionLength);
             b.Property(x => x.IsActive).HasDefaultValue(true);
 
-            b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+            b.HasIndex(x => x.NurseryBranchId);
+            b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.Name }).IsUnique();
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Student>(b =>
@@ -167,6 +175,165 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany()
                 .HasForeignKey(x => x.NurseryClassId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<Payment>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "Payments", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.PaymentNumber).IsRequired().HasMaxLength(Payment.MaxPaymentNumberLength);
+            b.Property(x => x.PaymentMethod).HasConversion<int>();
+            b.Property(x => x.PaymentPurpose).HasConversion<int>();
+            b.Property(x => x.CustomPaymentPurpose).HasMaxLength(Payment.MaxCustomPurposeLength);
+            b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
+            b.Property(x => x.Notes).HasMaxLength(Payment.MaxNotesLength);
+
+            b.HasIndex(x => new { x.TenantId, x.PaymentNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.PaymentDate });
+            b.HasIndex(x => new { x.TenantId, x.StudentId });
+            b.HasIndex(x => new { x.TenantId, x.GradeId });
+            b.HasIndex(x => new { x.TenantId, x.ClassId });
+
+            b.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne<GradeCategory>()
+                .WithMany()
+                .HasForeignKey(x => x.GradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne<NurseryClass>()
+                .WithMany()
+                .HasForeignKey(x => x.ClassId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Expense>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "Expenses", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ExpenseNumber).IsRequired().HasMaxLength(Expense.MaxExpenseNumberLength);
+            b.Property(x => x.Title).IsRequired().HasMaxLength(Expense.MaxTitleLength);
+            b.Property(x => x.ExpenseCategory).HasConversion<int>();
+            b.Property(x => x.CustomExpenseCategory).HasMaxLength(Expense.MaxCustomCategoryLength);
+            b.Property(x => x.VendorName).HasMaxLength(Expense.MaxVendorNameLength);
+            b.Property(x => x.PaymentMethod).HasConversion<int>();
+            b.Property(x => x.PaymentStatus).HasConversion<int>();
+            b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
+            b.Property(x => x.TaxAmount).HasColumnType("decimal(18,2)");
+            b.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            b.Property(x => x.ReceiptNumber).HasMaxLength(Expense.MaxReceiptNumberLength);
+            b.Property(x => x.Notes).HasMaxLength(Expense.MaxNotesLength);
+
+            b.HasIndex(x => x.NurseryBranchId);
+            b.HasIndex(x => new { x.TenantId, x.ExpenseNumber }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.ExpenseDate });
+            b.HasIndex(x => new { x.TenantId, x.ExpenseDate });
+            b.HasIndex(x => new { x.TenantId, x.ExpenseCategory });
+            b.HasIndex(x => new { x.TenantId, x.PaymentStatus });
+            b.HasIndex(x => new { x.TenantId, x.PaymentMethod });
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Attendance>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "Attendances", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Date).HasColumnType("date");
+            b.Property(x => x.Status).HasConversion<int>();
+
+            b.HasIndex(x => new { x.StudentId, x.Date }).IsUnique();
+
+            b.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DailyFollowupBook>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "DailyFollowupBooks", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ReportDate).HasColumnType("date");
+            b.Property(x => x.OverallMood).HasConversion<int>();
+            b.Property(x => x.TeacherNote).IsRequired().HasMaxLength(DailyFollowupBook.MaxTeacherNoteLength);
+            b.Property(x => x.SleepDuration).HasMaxLength(DailyFollowupBook.MaxSleepDurationLength);
+            b.Property(x => x.MoodAfterWaking).HasConversion<int?>();
+            b.Property(x => x.IsDraft).HasDefaultValue(true);
+            b.Property(x => x.SentToParent).HasDefaultValue(false);
+            b.Property(x => x.IsVisibleToParent).HasDefaultValue(false);
+
+            b.HasIndex(x => new { x.StudentId, x.ReportDate }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.ReportDate });
+
+            b.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryBranchId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DailyFollowupSubjectEntry>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "DailyFollowupSubjectEntries", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.SubjectName).IsRequired().HasMaxLength(DailyFollowupSubjectEntry.MaxSubjectNameLength);
+            b.Property(x => x.SubjectIcon).IsRequired().HasMaxLength(DailyFollowupSubjectEntry.MaxSubjectIconLength);
+            b.Property(x => x.Notes).HasMaxLength(DailyFollowupSubjectEntry.MaxNotesLength);
+
+            b.HasIndex(x => new { x.DailyFollowupBookId, x.SortOrder });
+
+            b.HasOne<DailyFollowupBook>()
+                .WithMany(x => x.Subjects)
+                .HasForeignKey(x => x.DailyFollowupBookId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DailyFollowupActivityEntry>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "DailyFollowupActivityEntries", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ActivityType).HasConversion<int>();
+
+            b.HasIndex(x => new { x.DailyFollowupBookId, x.ActivityType }).IsUnique();
+
+            b.HasOne<DailyFollowupBook>()
+                .WithMany(x => x.Activities)
+                .HasForeignKey(x => x.DailyFollowupBookId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DailyFollowupMealEntry>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "DailyFollowupMealEntries", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.MealType).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Notes).HasMaxLength(DailyFollowupMealEntry.MaxNotesLength);
+
+            b.HasIndex(x => new { x.DailyFollowupBookId, x.MealType }).IsUnique();
+
+            b.HasOne<DailyFollowupBook>()
+                .WithMany(x => x.Meals)
+                .HasForeignKey(x => x.DailyFollowupBookId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<UserBranch>(b =>

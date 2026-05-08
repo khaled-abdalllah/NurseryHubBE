@@ -8,11 +8,13 @@ namespace NurseryHub.Nurseries;
 public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
 {
     public const int MaxNameLength = 128;
+    public const int MaxDescriptionLength = 512;
 
     public Guid? TenantId { get; private set; }
     public Guid NurseryBranchId { get; private set; }
     public Guid? GradeCategoryId { get; private set; }
     public string Name { get; private set; } = null!;
+    public string Description { get; private set; } = string.Empty;
     public int Capacity { get; private set; }
     public int? MinAgeInMonths { get; private set; }
     public int? MaxAgeInMonths { get; private set; }
@@ -29,6 +31,7 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
         Guid nurseryBranchId,
         Guid? gradeCategoryId,
         string name,
+        string? description,
         int capacity,
         int? minAgeInMonths = null,
         int? maxAgeInMonths = null,
@@ -38,6 +41,7 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
         NurseryBranchId = nurseryBranchId;
         GradeCategoryId = gradeCategoryId;
         SetName(name);
+        SetDescription(description);
         SetCapacity(capacity);
         SetAgeRange(minAgeInMonths, maxAgeInMonths);
         IsActive = isActive;
@@ -46,6 +50,13 @@ public class NurseryClass : FullAuditedEntity<Guid>, IMultiTenant
     public void SetName(string name)
     {
         Name = Check.NotNullOrWhiteSpace(name, nameof(name), MaxNameLength);
+    }
+
+    public void SetDescription(string? description)
+    {
+        Description = string.IsNullOrWhiteSpace(description)
+            ? string.Empty
+            : Check.Length(description.Trim(), nameof(description), MaxDescriptionLength);
     }
 
     public void SetGradeCategory(Guid? gradeCategoryId)

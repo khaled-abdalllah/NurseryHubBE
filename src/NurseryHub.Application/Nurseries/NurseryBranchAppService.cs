@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using NurseryHub.Locations;
 using NurseryHub.Security;
 using Volo.Abp;
@@ -9,11 +11,12 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Identity;
 using Volo.Abp.MultiTenancy;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = NurseryHubRoles.Admin)]
+[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
 public class NurseryBranchAppService
     : CrudAppService<
             NurseryBranch,
@@ -24,9 +27,12 @@ public class NurseryBranchAppService
             CreateUpdateNurseryBranchDto>,
         INurseryBranchAppService
 {
+    private readonly NurseryMediaOptions _mediaOptions;
     private readonly IRepository<Nursery, Guid> _nurseryRepository;
     private readonly IRepository<Governorate, Guid> _governorateRepository;
     private readonly IRepository<City, Guid> _cityRepository;
+    private readonly IRepository<UserBranch, Guid> _userBranchRepository;
+    private readonly IdentityUserManager _identityUserManager;
     private readonly IDataFilter _dataFilter;
 
     public NurseryBranchAppService(
@@ -34,13 +40,84 @@ public class NurseryBranchAppService
         IRepository<Nursery, Guid> nurseryRepository,
         IRepository<Governorate, Guid> governorateRepository,
         IRepository<City, Guid> cityRepository,
-        IDataFilter dataFilter)
+        IRepository<UserBranch, Guid> userBranchRepository,
+        IdentityUserManager identityUserManager,
+        IDataFilter dataFilter,
+        IOptions<NurseryMediaOptions> mediaOptions)
         : base(repository)
     {
+        _mediaOptions = mediaOptions.Value;
         _nurseryRepository = nurseryRepository;
         _governorateRepository = governorateRepository;
         _cityRepository = cityRepository;
+        _userBranchRepository = userBranchRepository;
+        _identityUserManager = identityUserManager;
         _dataFilter = dataFilter;
+    }
+
+    public override async Task<NurseryBranchDto> CreateAsync(CreateUpdateNurseryBranchDto input)
+    {
+        Nursery nursery;
+       nursery = await _nurseryRepository.GetAsync(input.NurseryId);
+
+
+        if (!nursery.TenantId.HasValue)
+        {
+            throw new UserFriendlyException("Nursery tenant is not configured.");
+        }
+
+        NurseryBranchDto dto;
+        using (CurrentTenant.Change(nursery.TenantId.Value))
+        {
+            dto = await base.CreateAsync(input);
+        }
+
+        await GrantNurseryAdminsAccessToNewBranchAsync(dto.Id, input.NurseryId);
+        return dto;
+    }
+
+    private async Task GrantNurseryAdminsAccessToNewBranchAsync(Guid newBranchId, Guid nurseryId)
+    {
+        Nursery nursery;
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            nursery = await _nurseryRepository.GetAsync(nurseryId);
+        }
+
+        if (!nursery.TenantId.HasValue)
+        {
+            return;
+        }
+
+        using (CurrentTenant.Change(nursery.TenantId.Value))
+        {
+            var admins = await _identityUserManager.GetUsersInRoleAsync(NurseryHubRoles.NurseryAdmin);
+            if (admins == null || admins.Count == 0)
+            {
+                return;
+            }
+
+            var adminIds = admins.Select(u => u.Id).ToHashSet();
+            var existing = await _userBranchRepository.GetListAsync(
+                ub => ub.NurseryBranchId == newBranchId && adminIds.Contains(ub.UserId));
+            var alreadyLinked = existing.Select(e => e.UserId).ToHashSet();
+
+            var toInsert = new List<UserBranch>();
+            foreach (var user in admins)
+            {
+                if (alreadyLinked.Contains(user.Id))
+                {
+                    continue;
+                }
+
+                toInsert.Add(new UserBranch(GuidGenerator.Create(), nursery.TenantId.Value, user.Id, newBranchId));
+            }
+
+            if (toInsert.Count > 0)
+            {
+                await _userBranchRepository.InsertManyAsync(toInsert, autoSave: true);
+            }
+        }
     }
 
     public override async Task<PagedResultDto<NurseryBranchDto>> GetListAsync(GetNurseryBranchesInput input)
@@ -54,6 +131,8 @@ public class NurseryBranchAppService
             var cities = await _cityRepository.GetQueryableAsync();
 
             var filtered = branches.WhereIf(input.NurseryId.HasValue, x => x.NurseryId == input.NurseryId);
+            // Tenant users must only see branches for their tenant; multitenant is disabled above for nursery joins.
+            filtered = filtered.WhereIf(CurrentTenant.Id.HasValue, x => x.TenantId == CurrentTenant.Id);
 
             var query =
                 from branch in filtered
@@ -91,6 +170,70 @@ public class NurseryBranchAppService
 
             return new PagedResultDto<NurseryBranchDto>(totalCount, items);
         }
+    }
+
+    public async Task<ListResultDto<ManagedBranchLookupDto>> GetManagedBranchesAsync()
+    {
+        if (!CurrentUser.Id.HasValue || !CurrentTenant.Id.HasValue)
+        {
+            return new ListResultDto<ManagedBranchLookupDto>(new List<ManagedBranchLookupDto>());
+        }
+
+
+            var branches = await Repository.GetQueryableAsync();
+            var nurseries = await _nurseryRepository.GetQueryableAsync();
+            var userBranches = await _userBranchRepository.GetQueryableAsync();
+
+            var query =
+                from ub in userBranches
+                join branch in branches on ub.NurseryBranchId equals branch.Id
+                join nursery in nurseries on branch.NurseryId equals nursery.Id
+                where ub.UserId == CurrentUser.Id.Value
+                      && ub.TenantId == CurrentTenant.Id
+                select new
+                {
+                    Id = branch.Id,
+                    Name = branch.Name,
+                    NurseryName = nursery.Name,
+                    NurseryLogoUrlStored = nursery.LogoUrl,
+                };
+
+            var rows = await AsyncExecuter.ToListAsync(
+                query.Distinct().OrderBy(x => x.Name));
+            var items = rows
+                .Select(x => new ManagedBranchLookupDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NurseryName = x.NurseryName,
+                    NurseryLogoUrl = ResolveLogoDisplayUrl(x.NurseryLogoUrlStored),
+                })
+                .ToList();
+
+            return new ListResultDto<ManagedBranchLookupDto>(items);
+    }
+
+    private string? ResolveLogoDisplayUrl(string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored))
+        {
+            return null;
+        }
+
+        if (stored.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase) ||
+            stored.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return stored;
+        }
+
+        var baseUrl = _mediaOptions.PublicBaseUrl.TrimEnd('/');
+        var fileName = stored.Replace('\\', '/').TrimStart('/');
+        if (fileName.Contains('/', System.StringComparison.Ordinal))
+        {
+            return $"{baseUrl}/{fileName}";
+        }
+
+        return $"{baseUrl}/logo/{fileName}";
     }
 
     public override async Task<NurseryBranchDto> GetAsync(Guid id)

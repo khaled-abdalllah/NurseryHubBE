@@ -26,6 +26,8 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
     ];
 
     private readonly IRepository<Nursery, Guid> _nurseryRepository;
+    private readonly IRepository<NurseryBranch, Guid> _nurseryBranchRepository;
+    private readonly IRepository<UserBranch, Guid> _userBranchRepository;
     private readonly IIdentityUserRepository _identityUserRepository;
     private readonly IIdentityRoleRepository _identityRoleRepository;
     private readonly IdentityUserManager _identityUserManager;
@@ -34,6 +36,8 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
 
     public NurseryUserAppService(
         IRepository<Nursery, Guid> nurseryRepository,
+        IRepository<NurseryBranch, Guid> nurseryBranchRepository,
+        IRepository<UserBranch, Guid> userBranchRepository,
         IIdentityUserRepository identityUserRepository,
         IIdentityRoleRepository identityRoleRepository,
         IdentityUserManager identityUserManager,
@@ -41,6 +45,8 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
         IDataFilter dataFilter)
     {
         _nurseryRepository = nurseryRepository;
+        _nurseryBranchRepository = nurseryBranchRepository;
+        _userBranchRepository = userBranchRepository;
         _identityUserRepository = identityUserRepository;
         _identityRoleRepository = identityRoleRepository;
         _identityUserManager = identityUserManager;
@@ -60,12 +66,30 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
         {
             var users = await _identityUserRepository.GetListAsync();
             users = users.OrderBy(x => x.UserName).ToList();
+            var userIds = users.Select(x => x.Id).ToList();
+
+            Dictionary<Guid, List<Guid>> byUser;
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var ubQuery = await _userBranchRepository.GetQueryableAsync();
+                var bQuery = await _nurseryBranchRepository.GetQueryableAsync();
+                var pairs = await AsyncExecuter.ToListAsync(
+                    from ub in ubQuery
+                    join b in bQuery on ub.NurseryBranchId equals b.Id
+                    where userIds.Contains(ub.UserId) && b.NurseryId == nurseryId
+                    select new { ub.UserId, ub.NurseryBranchId });
+
+                byUser = pairs
+                    .GroupBy(x => x.UserId)
+                    .ToDictionary(g => g.Key, g => g.Select(x => x.NurseryBranchId).ToList());
+            }
 
             var result = new List<NurseryUserDto>(users.Count);
             foreach (var user in users)
             {
                 var roles = await _identityUserManager.GetRolesAsync(user);
                 var role = roles.FirstOrDefault(r => AllowedRoles.Contains(r)) ?? string.Empty;
+                byUser.TryGetValue(user.Id, out var branchIds);
 
                 result.Add(new NurseryUserDto
                 {
@@ -74,6 +98,7 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
                     Email = user.Email ?? string.Empty,
                     Role = role,
                     CreationTime = user.CreationTime,
+                    BranchIds = branchIds ?? new List<Guid>(),
                 });
             }
 
@@ -107,14 +132,9 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
             var roleResult = await _identityUserManager.AddToRoleAsync(user, input.Role);
             ThrowIfFailed(roleResult);
 
-            return new NurseryUserDto
-            {
-                Id = user.Id,
-                UserName = user.UserName ?? string.Empty,
-                Email = user.Email ?? string.Empty,
-                Role = input.Role,
-                CreationTime = user.CreationTime,
-            };
+            await ReplaceUserBranchesAsync(user.Id, nurseryId, nursery.TenantId.Value, input.Role, input.BranchIds);
+
+            return await MapToNurseryUserDtoAsync(user, nurseryId);
         }
     }
 
@@ -152,14 +172,109 @@ public class NurseryUserAppService : ApplicationService, INurseryUserAppService
             var addRoleResult = await _identityUserManager.AddToRoleAsync(user, input.Role);
             ThrowIfFailed(addRoleResult);
 
-            return new NurseryUserDto
+            await ReplaceUserBranchesAsync(user.Id, nurseryId, nursery.TenantId.Value, input.Role, input.BranchIds);
+
+            return await MapToNurseryUserDtoAsync(user, nurseryId);
+        }
+    }
+
+    private async Task<NurseryUserDto> MapToNurseryUserDtoAsync(IdentityUser user, Guid nurseryId)
+    {
+        var roles = await _identityUserManager.GetRolesAsync(user);
+        var role = roles.FirstOrDefault(r => AllowedRoles.Contains(r)) ?? string.Empty;
+        var branchIds = await GetUserBranchIdsForNurseryAsync(user.Id, nurseryId);
+
+        return new NurseryUserDto
+        {
+            Id = user.Id,
+            UserName = user.UserName ?? string.Empty,
+            Email = user.Email ?? string.Empty,
+            Role = role,
+            CreationTime = user.CreationTime,
+            BranchIds = branchIds,
+        };
+    }
+
+    private async Task<List<Guid>> GetUserBranchIdsForNurseryAsync(Guid userId, Guid nurseryId)
+    {
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            var ubQuery = await _userBranchRepository.GetQueryableAsync();
+            var bQuery = await _nurseryBranchRepository.GetQueryableAsync();
+
+            return await AsyncExecuter.ToListAsync(
+                from ub in ubQuery
+                join b in bQuery on ub.NurseryBranchId equals b.Id
+                where ub.UserId == userId && b.NurseryId == nurseryId
+                select ub.NurseryBranchId);
+        }
+    }
+
+    private async Task ReplaceUserBranchesAsync(
+        Guid userId,
+        Guid nurseryId,
+        Guid nurseryTenantId,
+        string role,
+        IReadOnlyCollection<Guid>? branchIds)
+    {
+        var existing = await _userBranchRepository.GetListAsync(x => x.UserId == userId);
+        if (existing.Count > 0)
+        {
+            await _userBranchRepository.DeleteManyAsync(existing, autoSave: true);
+        }
+
+        IReadOnlyList<Guid> targetBranchIds;
+        if (role == NurseryHubRoles.NurseryAdmin)
+        {
+            targetBranchIds = await GetAllBranchIdsForNurseryAsync(nurseryId);
+        }
+        else if (role == NurseryHubRoles.Teacher || role == NurseryHubRoles.BranchManager)
+        {
+            if (branchIds == null || branchIds.Count == 0)
             {
-                Id = user.Id,
-                UserName = user.UserName ?? string.Empty,
-                Email = user.Email ?? string.Empty,
-                Role = input.Role,
-                CreationTime = user.CreationTime,
-            };
+                throw new UserFriendlyException(L["NurseryUsers:Validation:BranchesRequired"]);
+            }
+
+            var distinct = branchIds.Distinct().ToList();
+            await ValidateBranchIdsForNurseryAsync(nurseryId, distinct);
+            targetBranchIds = distinct;
+        }
+        else
+        {
+            targetBranchIds = Array.Empty<Guid>();
+        }
+
+        if (targetBranchIds.Count == 0)
+        {
+            return;
+        }
+
+        var entities = targetBranchIds
+            .Select(branchId => new UserBranch(GuidGenerator.Create(), nurseryTenantId, userId, branchId))
+            .ToList();
+        await _userBranchRepository.InsertManyAsync(entities, autoSave: true);
+    }
+
+    private async Task<List<Guid>> GetAllBranchIdsForNurseryAsync(Guid nurseryId)
+    {
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            var query = await _nurseryBranchRepository.GetQueryableAsync();
+            return await AsyncExecuter.ToListAsync(query.Where(b => b.NurseryId == nurseryId).Select(b => b.Id));
+        }
+    }
+
+    private async Task ValidateBranchIdsForNurseryAsync(Guid nurseryId, List<Guid> branchIds)
+    {
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            var query = await _nurseryBranchRepository.GetQueryableAsync();
+            var validCount = await AsyncExecuter.CountAsync(
+                query.Where(b => b.NurseryId == nurseryId && branchIds.Contains(b.Id)));
+            if (validCount != branchIds.Count)
+            {
+                throw new UserFriendlyException("One or more branches are invalid for this nursery.");
+            }
         }
     }
 

@@ -6,6 +6,8 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -280,6 +282,7 @@ public class NurseryHubHttpApiHostModule : AbpModule
             app.UseErrorPage();
         }
 
+        ConfigureTenantMediaStaticFiles(app, context);
         app.UseRouting();
         app.MapAbpStaticAssets();
         app.UseAbpStudioLink();
@@ -323,5 +326,30 @@ public class NurseryHubHttpApiHostModule : AbpModule
         });
 
         app.UseConfiguredEndpoints();
+    }
+
+    /// <summary>
+    /// Serves uploaded tenant media (e.g. <c>{MediaRoot}/{tenant}/students/*</c>) at URLs built by
+    /// <see cref="StudentAppService"/> / <see cref="AttendanceAppService"/> (<c>{PublicBaseUrl}/{tenant}/students/{file}</c>).
+    /// </summary>
+    private static void ConfigureTenantMediaStaticFiles(IApplicationBuilder app, ApplicationInitializationContext context)
+    {
+        var mediaOptions = context.ServiceProvider.GetRequiredService<IOptions<NurseryMediaOptions>>().Value;
+        var mediaRoot = mediaOptions.MediaRootPath;
+        if (string.IsNullOrWhiteSpace(mediaRoot))
+        {
+            return;
+        }
+
+        if (!Directory.Exists(mediaRoot))
+        {
+            Directory.CreateDirectory(mediaRoot);
+        }
+
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(mediaRoot),
+            RequestPath = "",
+        });
     }
 }

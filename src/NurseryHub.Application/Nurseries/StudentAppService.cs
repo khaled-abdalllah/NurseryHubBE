@@ -14,7 +14,7 @@ using Volo.Abp.TenantManagement;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = NurseryHubRoles.Admin)]
+[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
 public class StudentAppService
     : CrudAppService<
             Student,
@@ -43,11 +43,7 @@ public class StudentAppService
         _mediaOptions = mediaOptions.Value;
     }
 
-    protected override string? GetPolicyName { get; set; } = NurseryHubPermissions.Students.Default;
-    protected override string? GetListPolicyName { get; set; } = NurseryHubPermissions.Students.Default;
-    protected override string? CreatePolicyName { get; set; } = NurseryHubPermissions.Students.Create;
-    protected override string? UpdatePolicyName { get; set; } = NurseryHubPermissions.Students.Edit;
-    protected override string? DeletePolicyName { get; set; } = NurseryHubPermissions.Students.Delete;
+
 
     public override async Task<PagedResultDto<StudentDto>> GetListAsync(GetStudentsInput input)
     {
@@ -177,6 +173,7 @@ public class StudentAppService
     public virtual async Task<StudentDto> UploadImageAsync(Guid id, UploadStudentImageInput input)
     {
         var entity = await GetEntityByIdAsync(id);
+        EnsureStudentIsActive(entity);
         var file = input.File;
         var ext = Path.GetExtension(file.FileName)!.ToLowerInvariant();
         var tenantName = await GetTenantNameAsync(entity.TenantId);
@@ -200,13 +197,32 @@ public class StudentAppService
         return dto;
     }
 
+    public override async Task<StudentDto> UpdateAsync(Guid id, CreateUpdateStudentDto input)
+    {
+        var entity = await Repository.GetAsync(id);
+        if (!entity.IsActive && !input.IsActive)
+        {
+            throw new BusinessException("NurseryHub:Student:Inactive");
+        }
+
+        return await base.UpdateAsync(id, input);
+    }
+
+    public override async Task DeleteAsync(Guid id)
+    {
+        var entity = await Repository.GetAsync(id);
+        EnsureStudentIsActive(entity);
+        await base.DeleteAsync(id);
+    }
+
     protected override async Task<Student> MapToEntityAsync(CreateUpdateStudentDto createInput)
     {
         await ValidateReferencesAsync(createInput.NurseryBranchId, createInput.NurseryClassId);
+        var tenantId = await ResolveTenantIdForCreationAsync(createInput.NurseryBranchId);
 
         return new Student(
             GuidGenerator.Create(),
-            CurrentTenant.Id,
+            tenantId,
             createInput.NurseryBranchId,
             createInput.FullName,
             createInput.BirthDate,
@@ -272,7 +288,13 @@ public class StudentAppService
 
     private async Task ValidateReferencesAsync(Guid nurseryBranchId, Guid? nurseryClassId)
     {
-        if (!await _nurseryBranchRepository.AnyAsync(x => x.Id == nurseryBranchId))
+        var branch = await _nurseryBranchRepository.FindAsync(nurseryBranchId);
+        if (branch == null)
+        {
+            throw new BusinessException("NurseryHub:Student:BranchNotFound");
+        }
+
+        if (CurrentTenant.Id.HasValue && branch.TenantId != CurrentTenant.Id)
         {
             throw new BusinessException("NurseryHub:Student:BranchNotFound");
         }
@@ -287,6 +309,22 @@ public class StudentAppService
         {
             throw new BusinessException("NurseryHub:Student:ClassInvalidForBranch");
         }
+    }
+
+    private async Task<Guid> ResolveTenantIdForCreationAsync(Guid nurseryBranchId)
+    {
+        if (CurrentTenant.Id.HasValue)
+        {
+            return CurrentTenant.Id.Value;
+        }
+
+        var branch = await _nurseryBranchRepository.FindAsync(nurseryBranchId);
+        if (branch?.TenantId.HasValue == true)
+        {
+            return branch.TenantId.Value;
+        }
+
+        throw new BusinessException("NurseryHub:Student:TenantIdRequired");
     }
 
     protected override StudentDto MapToGetOutputDto(Student entity)
@@ -376,5 +414,13 @@ public class StudentAppService
 
         var tenant = await _tenantRepository.FindAsync(tenantId.Value);
         return tenant?.Name ?? CurrentTenant.Name;
+    }
+
+    private static void EnsureStudentIsActive(Student student)
+    {
+        if (!student.IsActive)
+        {
+            throw new BusinessException("NurseryHub:Student:Inactive");
+        }
     }
 }

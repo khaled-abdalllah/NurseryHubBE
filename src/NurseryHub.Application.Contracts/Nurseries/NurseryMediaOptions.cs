@@ -4,8 +4,8 @@ public class NurseryMediaOptions
 {
     public const string SectionName = "Media";
 
-    /// <summary>Public base URL used to build logo URLs (e.g. http://localhost:4800).</summary>
-    public string PublicBaseUrl { get; set; } = "http://localhost:4800";
+    /// <summary>Public base URL of this API host, used to build media URLs (must match how clients reach the API).</summary>
+    public string PublicBaseUrl { get; set; } = "https://localhost:44301";
 
     /// <summary>Physical folder where logo files are stored (e.g. C:\Media\logo).</summary>
     public string LogoPhysicalPath { get; set; } = @"C:\Media\logo";

@@ -13,6 +13,7 @@ public class GradeCategory : FullAuditedEntity<Guid>, IMultiTenant
     public const int MaxDescriptionLength = 512;
 
     public Guid? TenantId { get; private set; }
+    public Guid NurseryBranchId { get; private set; }
     public string Name { get; private set; } = null!;
     public string Icon { get; private set; } = null!;
     public string ColorToken { get; private set; } = null!;
@@ -29,6 +30,7 @@ public class GradeCategory : FullAuditedEntity<Guid>, IMultiTenant
     public GradeCategory(
         Guid id,
         Guid? tenantId,
+        Guid nurseryBranchId,
         string name,
         string icon,
         string colorToken,
@@ -36,6 +38,7 @@ public class GradeCategory : FullAuditedEntity<Guid>, IMultiTenant
         bool isActive = true) : base(id)
     {
         TenantId = tenantId;
+        SetNurseryBranch(nurseryBranchId);
         SetName(name);
         SetIcon(icon);
         SetColorToken(colorToken);
@@ -46,6 +49,11 @@ public class GradeCategory : FullAuditedEntity<Guid>, IMultiTenant
     public void SetName(string name)
     {
         Name = Check.NotNullOrWhiteSpace(name, nameof(name), MaxNameLength);
+    }
+
+    public void SetNurseryBranch(Guid nurseryBranchId)
+    {
+        NurseryBranchId = Check.NotNull(nurseryBranchId, nameof(nurseryBranchId));
     }
 
     public void SetIcon(string icon)

@@ -51,4 +51,12 @@ public static class NurseryHubPermissions
         public const string Edit = Default + ".Edit";
         public const string Delete = Default + ".Delete";
     }
+
+    public static class NurseryClasses
+    {
+        public const string Default = GroupName + ".NurseryClasses";
+        public const string Create = Default + ".Create";
+        public const string Edit = Default + ".Edit";
+        public const string Delete = Default + ".Delete";
+    }
 }
