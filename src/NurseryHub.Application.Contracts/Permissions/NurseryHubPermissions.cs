@@ -44,6 +44,14 @@ public static class NurseryHubPermissions
         public const string Delete = Default + ".Delete";
     }
 
+    public static class StudentApplications
+    {
+        public const string Default = GroupName + ".StudentApplications";
+        public const string Create = Default + ".Create";
+        public const string Edit = Default + ".Edit";
+        public const string Delete = Default + ".Delete";
+    }
+
     public static class GradeCategories
     {
         public const string Default = GroupName + ".GradeCategories";
@@ -58,5 +66,14 @@ public static class NurseryHubPermissions
         public const string Create = Default + ".Create";
         public const string Edit = Default + ".Edit";
         public const string Delete = Default + ".Delete";
+    }
+
+    public static class Notifications
+    {
+        public const string Default = GroupName + ".Notifications";
+        public const string Create = Default + ".Create";
+        public const string Edit = Default + ".Edit";
+        public const string Delete = Default + ".Delete";
+        public const string Send = Default + ".Send";
     }
 }

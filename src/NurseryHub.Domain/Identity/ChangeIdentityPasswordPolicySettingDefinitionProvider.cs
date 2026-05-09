@@ -30,5 +30,11 @@ public class ChangeIdentityPasswordPolicySettingDefinitionProvider : SettingDefi
         {
             requireDigit.DefaultValue = false.ToString();
         }
+
+        var requiredLength = context.GetOrNull(IdentitySettingNames.Password.RequiredLength);
+        if (requiredLength != null)
+        {
+            requiredLength.DefaultValue = "4";
+        }
     }
 }

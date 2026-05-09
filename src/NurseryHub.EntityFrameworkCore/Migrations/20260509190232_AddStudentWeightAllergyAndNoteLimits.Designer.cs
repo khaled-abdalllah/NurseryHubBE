@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NurseryHub.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
@@ -12,9 +13,11 @@ using Volo.Abp.EntityFrameworkCore;
 namespace NurseryHub.Migrations
 {
     [DbContext(typeof(NurseryHubDbContext))]
-    partial class NurseryHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509190232_AddStudentWeightAllergyAndNoteLimits")]
+    partial class AddStudentWeightAllergyAndNoteLimits
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1382,108 +1385,6 @@ namespace NurseryHub.Migrations
                     b.HasIndex("TenantId", "NurseryBranchId", "FullName");
 
                     b.ToTable("AppStudents", (string)null);
-                });
-
-            modelBuilder.Entity("NurseryHub.Nurseries.StudentApplication", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateOnly>("BirthDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("ChildFullName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime>("CreationTime")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("CreationTime");
-
-                    b.Property<Guid?>("CreatorId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("CreatorId");
-
-                    b.Property<Guid?>("DeleterId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("DeleterId");
-
-                    b.Property<DateTime?>("DeletionTime")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("DeletionTime");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Gender")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("IsDeleted");
-
-                    b.Property<DateTime?>("LastModificationTime")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("LastModificationTime");
-
-                    b.Property<Guid?>("LastModifierId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("LastModifierId");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<Guid>("NurseryBranchId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ParentFullName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("ParentPhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid?>("RequestedGradeCategoryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("SecondaryPhoneNumber")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("TenantId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BirthDate");
-
-                    b.HasIndex("NurseryBranchId");
-
-                    b.HasIndex("ParentPhoneNumber");
-
-                    b.HasIndex("RequestedGradeCategoryId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TenantId", "CreationTime");
-
-                    b.HasIndex("TenantId", "NurseryBranchId", "Status");
-
-                    b.ToTable("AppStudentApplications", (string)null);
                 });
 
             modelBuilder.Entity("NurseryHub.Nurseries.UserBranch", b =>
@@ -3675,20 +3576,6 @@ namespace NurseryHub.Migrations
                         .IsRequired();
 
                     b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("NurseryHub.Nurseries.StudentApplication", b =>
-                {
-                    b.HasOne("NurseryHub.Nurseries.NurseryBranch", null)
-                        .WithMany()
-                        .HasForeignKey("NurseryBranchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NurseryHub.Nurseries.GradeCategory", null)
-                        .WithMany()
-                        .HasForeignKey("RequestedGradeCategoryId")
-                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("NurseryHub.Nurseries.UserBranch", b =>

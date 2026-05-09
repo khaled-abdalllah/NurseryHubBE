@@ -10,9 +10,18 @@ public class CreateUpdateStudentDto
 
     public Guid? NurseryClassId { get; set; }
 
+    /// <summary>
+    /// When creating a student, use this existing parent contact instead of inserting a new row.
+    /// Tenant must match the nursery branch; parent fields on this DTO update the shared contact.
+    /// </summary>
+    public Guid? ExistingParentContactId { get; set; }
+
     [Required]
     [StringLength(StudentConsts.MaxFullNameLength)]
     public string FullName { get; set; } = null!;
+
+    /// <summary>Optional weight in kilograms (1–80).</summary>
+    public decimal? WeightKg { get; set; }
 
     [Required]
     public DateOnly BirthDate { get; set; }
@@ -34,25 +43,21 @@ public class CreateUpdateStudentDto
     [StringLength(StudentConsts.MaxFullNameLength)]
     public string FatherName { get; set; } = null!;
 
-    [Required]
     [StringLength(StudentConsts.MaxIdentityNumberLength)]
-    public string FatherIdentityNumber { get; set; } = null!;
+    public string? FatherIdentityNumber { get; set; }
 
     [Required]
     [StringLength(StudentConsts.MaxPhoneNumberLength)]
     public string FatherPhoneNumber { get; set; } = null!;
 
-    [Required]
     [StringLength(StudentConsts.MaxFullNameLength)]
-    public string MotherName { get; set; } = null!;
+    public string? MotherName { get; set; }
 
-    [Required]
     [StringLength(StudentConsts.MaxIdentityNumberLength)]
-    public string MotherIdentityNumber { get; set; } = null!;
+    public string? MotherIdentityNumber { get; set; }
 
-    [Required]
     [StringLength(StudentConsts.MaxPhoneNumberLength)]
-    public string MotherPhoneNumber { get; set; } = null!;
+    public string? MotherPhoneNumber { get; set; }
 
     [Required]
     [StringLength(StudentConsts.MaxPhoneNumberLength)]
@@ -94,5 +99,18 @@ public class CreateUpdateStudentDto
     [StringLength(StudentConsts.MaxMedicalNotesLength)]
     public string? MedicalNotes { get; set; }
 
+    [StringLength(StudentConsts.MaxAllergyNotesLength)]
+    public string? AllergyNotes { get; set; }
+
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// When true (create or update student), creates or reuses an identity user and links them in AppParentStudents.
+    /// </summary>
+    public bool CreateParentPortalAccount { get; set; }
+
+    /// <summary>
+    /// Required when <see cref="CreateParentPortalAccount"/> is true — whose phone becomes username/password.
+    /// </summary>
+    public ParentPortalLoginUsernameSource? ParentLoginUsernameSource { get; set; }
 }

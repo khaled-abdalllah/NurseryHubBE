@@ -8,32 +8,30 @@ namespace NurseryHub.Nurseries;
 public class Student : FullAuditedEntity<Guid>, IMultiTenant
 {
     public const int MaxFullNameLength = 256;
-    public const int MaxIdentityNumberLength = 64;
     public const int MaxPhoneNumberLength = 32;
     public const int MaxBloodTypeLength = 16;
     public const int MaxReligionLength = 64;
     public const int MaxHomeAddressLength = 512;
     public const int MaxToiletTrainingStatusLength = 64;
-    public const int MaxDietaryRestrictionsLength = 1000;
-    public const int MaxHealthNotesLength = 2000;
-    public const int MaxMedicalNotesLength = 2000;
+    public const int MaxDietaryRestrictionsLength = 500;
+    public const int MaxHealthNotesLength = 1000;
+    public const int MaxMedicalNotesLength = 1000;
+    public const int MaxAllergyNotesLength = 1000;
     public const int MaxProfileImageFileNameLength = 256;
 
     public Guid? TenantId { get; private set; }
     public Guid NurseryBranchId { get; private set; }
     public Guid? NurseryClassId { get; private set; }
+    /// <summary>
+    /// FK to <see cref="ParentContact"/> (father/mother details).
+    /// </summary>
+    public Guid ParentId { get; private set; }
     public string FullName { get; private set; } = null!;
     public DateOnly BirthDate { get; private set; }
     public string Gender { get; private set; } = null!;
     public string? BloodType { get; private set; }
     public string? Religion { get; private set; }
     public string? HomeAddress { get; private set; }
-    public string FatherName { get; private set; } = null!;
-    public string FatherIdentityNumber { get; private set; } = null!;
-    public string FatherPhoneNumber { get; private set; } = null!;
-    public string MotherName { get; private set; } = null!;
-    public string MotherIdentityNumber { get; private set; } = null!;
-    public string MotherPhoneNumber { get; private set; } = null!;
     public string EmergencyContactNumber { get; private set; } = null!;
     public DateOnly EnrollmentDate { get; private set; }
     public string? HealthNotes { get; private set; }
@@ -47,19 +45,18 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
     public bool AttendsFriday { get; private set; }
     public bool AttendsSaturday { get; private set; }
     public string? MedicalNotes { get; private set; }
+    public string? AllergyNotes { get; private set; }
+    /// <summary>Optional weight in kilograms (e.g. 12.5).</summary>
+    public decimal? WeightKg { get; private set; }
     public string? ProfileImageFileName { get; private set; }
     public bool IsActive { get; private set; }
+
+    public virtual ParentContact Parent { get; protected set; } = null!;
 
     protected Student()
     {
         FullName = string.Empty;
         Gender = string.Empty;
-        FatherName = string.Empty;
-        FatherIdentityNumber = string.Empty;
-        FatherPhoneNumber = string.Empty;
-        MotherName = string.Empty;
-        MotherIdentityNumber = string.Empty;
-        MotherPhoneNumber = string.Empty;
         EmergencyContactNumber = string.Empty;
     }
 
@@ -67,18 +64,13 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
         Guid id,
         Guid? tenantId,
         Guid nurseryBranchId,
+        Guid parentId,
         string fullName,
         DateOnly birthDate,
         string gender,
         string? bloodType,
         string? religion,
         string? homeAddress,
-        string fatherName,
-        string fatherIdentityNumber,
-        string fatherPhoneNumber,
-        string motherName,
-        string motherIdentityNumber,
-        string motherPhoneNumber,
         string emergencyContactNumber,
         DateOnly enrollmentDate,
         string? healthNotes,
@@ -92,6 +84,8 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
         bool attendsFriday,
         bool attendsSaturday,
         string? medicalNotes,
+        string? allergyNotes,
+        decimal? weightKg,
         string? profileImageFileName,
         bool isActive = true,
         Guid? nurseryClassId = null) : base(id)
@@ -99,14 +93,13 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
         TenantId = tenantId;
         NurseryBranchId = nurseryBranchId;
         SetClass(nurseryClassId);
+        SetParentId(parentId);
         SetFullName(fullName);
         SetBirthDate(birthDate);
         SetGender(gender);
         SetBloodType(bloodType);
         SetReligion(religion);
         SetHomeAddress(homeAddress);
-        SetFatherInfo(fatherName, fatherIdentityNumber, fatherPhoneNumber);
-        SetMotherInfo(motherName, motherIdentityNumber, motherPhoneNumber);
         SetEmergencyContactNumber(emergencyContactNumber);
         SetEnrollmentDate(enrollmentDate);
         SetHealthNotes(healthNotes);
@@ -114,8 +107,20 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
         SetToiletTrainingStatus(toiletTrainingStatus);
         SetAttendingDays(attendsSunday, attendsMonday, attendsTuesday, attendsWednesday, attendsThursday, attendsFriday, attendsSaturday);
         SetMedicalNotes(medicalNotes);
+        SetAllergyNotes(allergyNotes);
+        SetWeightKg(weightKg);
         SetProfileImageFileName(profileImageFileName);
         IsActive = isActive;
+    }
+
+    public void SetParentId(Guid parentId)
+    {
+        if (parentId == Guid.Empty)
+        {
+            throw new ArgumentException("Parent id cannot be empty.", nameof(parentId));
+        }
+
+        ParentId = parentId;
     }
 
     public void SetClass(Guid? nurseryClassId)
@@ -158,26 +163,6 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
         HomeAddress = Check.Length(homeAddress, nameof(homeAddress), MaxHomeAddressLength);
     }
 
-    public void SetFatherInfo(string fatherName, string fatherIdentityNumber, string fatherPhoneNumber)
-    {
-        FatherName = Check.NotNullOrWhiteSpace(fatherName, nameof(fatherName), MaxFullNameLength);
-        FatherIdentityNumber = Check.NotNullOrWhiteSpace(
-            fatherIdentityNumber,
-            nameof(fatherIdentityNumber),
-            MaxIdentityNumberLength);
-        FatherPhoneNumber = Check.NotNullOrWhiteSpace(fatherPhoneNumber, nameof(fatherPhoneNumber), MaxPhoneNumberLength);
-    }
-
-    public void SetMotherInfo(string motherName, string motherIdentityNumber, string motherPhoneNumber)
-    {
-        MotherName = Check.NotNullOrWhiteSpace(motherName, nameof(motherName), MaxFullNameLength);
-        MotherIdentityNumber = Check.NotNullOrWhiteSpace(
-            motherIdentityNumber,
-            nameof(motherIdentityNumber),
-            MaxIdentityNumberLength);
-        MotherPhoneNumber = Check.NotNullOrWhiteSpace(motherPhoneNumber, nameof(motherPhoneNumber), MaxPhoneNumberLength);
-    }
-
     public void SetEmergencyContactNumber(string emergencyContactNumber)
     {
         EmergencyContactNumber = Check.NotNullOrWhiteSpace(
@@ -188,11 +173,6 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
 
     public void SetEnrollmentDate(DateOnly enrollmentDate)
     {
-        if (enrollmentDate > DateOnly.FromDateTime(DateTime.UtcNow))
-        {
-            throw new ArgumentException("Enrollment date cannot be in the future.", nameof(enrollmentDate));
-        }
-
         EnrollmentDate = enrollmentDate;
     }
 
@@ -235,6 +215,25 @@ public class Student : FullAuditedEntity<Guid>, IMultiTenant
     public void SetMedicalNotes(string? medicalNotes)
     {
         MedicalNotes = Check.Length(medicalNotes, nameof(medicalNotes), MaxMedicalNotesLength);
+    }
+
+    public void SetAllergyNotes(string? allergyNotes)
+    {
+        AllergyNotes = Check.Length(allergyNotes, nameof(allergyNotes), MaxAllergyNotesLength);
+    }
+
+    /// <summary>Sets weight in kg; null clears. Allowed range 1–80 when set.</summary>
+    public void SetWeightKg(decimal? weightKg)
+    {
+        if (weightKg.HasValue)
+        {
+            if (weightKg.Value < 1m || weightKg.Value > 80m)
+            {
+                throw new ArgumentOutOfRangeException(nameof(weightKg), weightKg, "Weight must be between 1 and 80 kg.");
+            }
+        }
+
+        WeightKg = weightKg;
     }
 
     public void SetProfileImageFileName(string? profileImageFileName)

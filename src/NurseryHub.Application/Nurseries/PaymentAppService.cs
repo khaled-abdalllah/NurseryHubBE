@@ -17,6 +17,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
 {
     private readonly IRepository<Payment, Guid> _paymentRepository;
     private readonly IRepository<Student, Guid> _studentRepository;
+    private readonly IRepository<ParentContact, Guid> _parentContactRepository;
     private readonly IRepository<NurseryClass, Guid> _classRepository;
     private readonly IRepository<GradeCategory, Guid> _gradeRepository;
     private readonly IRepository<UserBranch, Guid> _userBranchRepository;
@@ -24,12 +25,14 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
     public PaymentAppService(
         IRepository<Payment, Guid> paymentRepository,
         IRepository<Student, Guid> studentRepository,
+        IRepository<ParentContact, Guid> parentContactRepository,
         IRepository<NurseryClass, Guid> classRepository,
         IRepository<GradeCategory, Guid> gradeRepository,
         IRepository<UserBranch, Guid> userBranchRepository)
     {
         _paymentRepository = paymentRepository;
         _studentRepository = studentRepository;
+        _parentContactRepository = parentContactRepository;
         _classRepository = classRepository;
         _gradeRepository = gradeRepository;
         _userBranchRepository = userBranchRepository;
@@ -40,6 +43,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
         var accessibleBranchIds = await GetAccessibleBranchIdsAsync(input.NurseryBranchId);
         var payments = await _paymentRepository.GetQueryableAsync();
         var students = await _studentRepository.GetQueryableAsync();
+        var parents = await _parentContactRepository.GetQueryableAsync();
         var classes = await _classRepository.GetQueryableAsync();
         var grades = await _gradeRepository.GetQueryableAsync();
 
@@ -61,6 +65,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
         var query =
             from payment in filtered
             join student in students on payment.StudentId equals student.Id
+            join parent in parents on student.ParentId equals parent.Id
             join nurseryClass in classes on payment.ClassId equals nurseryClass.Id into classJoin
             from nurseryClass in classJoin.DefaultIfEmpty()
             join grade in grades on payment.GradeId equals grade.Id into gradeJoin
@@ -70,7 +75,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
                 Id = payment.Id,
                 PaymentNumber = payment.PaymentNumber,
                 StudentId = payment.StudentId,
-                StudentName = BuildStudentDisplayName(student.FullName, student.FatherName),
+                StudentName = BuildStudentDisplayName(student.FullName, parent.FatherName),
                 GradeId = payment.GradeId,
                 GradeName = grade != null ? grade.Name : null,
                 ClassId = payment.ClassId,
@@ -99,6 +104,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
     {
         var payment = await _paymentRepository.GetAsync(id);
         var student = await _studentRepository.GetAsync(payment.StudentId);
+        var parent = await _parentContactRepository.GetAsync(student.ParentId);
         var nurseryClass = await _classRepository.FindAsync(payment.ClassId);
         await EnsureCanAccessBranchAsync(nurseryClass?.NurseryBranchId);
         var grade = await _gradeRepository.FindAsync(payment.GradeId);
@@ -108,7 +114,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
             Id = payment.Id,
             PaymentNumber = payment.PaymentNumber,
             StudentId = payment.StudentId,
-            StudentName = BuildStudentDisplayName(student.FullName, student.FatherName),
+            StudentName = BuildStudentDisplayName(student.FullName, parent.FatherName),
             GradeId = payment.GradeId,
             GradeName = grade?.Name,
             ClassId = payment.ClassId,
@@ -181,24 +187,31 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
         var nurseryClass = await _classRepository.FindAsync(input.ClassId);
         await EnsureCanAccessBranchAsync(nurseryClass?.NurseryBranchId);
 
-        var queryable = await _studentRepository.GetQueryableAsync();
+        var students = await _studentRepository.GetQueryableAsync();
+        var parents = await _parentContactRepository.GetQueryableAsync();
+        var query =
+            from student in students.Where(x => x.IsActive && x.NurseryClassId == input.ClassId)
+            join parent in parents on student.ParentId equals parent.Id
+            select new { student, parent };
+
+        query = query.WhereIf(
+            !input.Filter.IsNullOrWhiteSpace(),
+            x => x.student.FullName.Contains(input.Filter!));
+
         var result = await AsyncExecuter.ToListAsync(
-            queryable
-                .Where(x => x.IsActive && x.NurseryClassId == input.ClassId)
-                .WhereIf(!input.Filter.IsNullOrWhiteSpace(), x => x.FullName.Contains(input.Filter!))
-                .OrderBy(x => x.FullName)
-                .Take(50));
+            query.OrderBy(x => x.student.FullName).Take(50));
 
         return result.Select(x => new PaymentStudentLookupDto
         {
-            Id = x.Id,
-            FullName = BuildStudentDisplayName(x.FullName, x.FatherName),
+            Id = x.student.Id,
+            FullName = BuildStudentDisplayName(x.student.FullName, x.parent.FatherName),
         }).ToList();
     }
 
     private async Task<PaymentDto> MapToPaymentDtoAsync(Payment payment)
     {
         var student = await _studentRepository.GetAsync(payment.StudentId);
+        var parent = await _parentContactRepository.GetAsync(student.ParentId);
         var nurseryClass = await _classRepository.FindAsync(payment.ClassId);
         var grade = await _gradeRepository.FindAsync(payment.GradeId);
 
@@ -207,7 +220,7 @@ public class PaymentAppService : ApplicationService, IPaymentAppService
             Id = payment.Id,
             PaymentNumber = payment.PaymentNumber,
             StudentId = payment.StudentId,
-            StudentName = BuildStudentDisplayName(student.FullName, student.FatherName),
+            StudentName = BuildStudentDisplayName(student.FullName, parent.FatherName),
             GradeId = payment.GradeId,
             GradeName = grade?.Name,
             ClassId = payment.ClassId,

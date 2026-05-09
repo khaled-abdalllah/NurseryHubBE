@@ -36,6 +36,11 @@ public class NurseryHubPermissionDefinitionProvider : PermissionDefinitionProvid
         students.AddChild(NurseryHubPermissions.Students.Edit, L("Permission:Students.Edit"));
         students.AddChild(NurseryHubPermissions.Students.Delete, L("Permission:Students.Delete"));
 
+        var studentApplications = myGroup.AddPermission(NurseryHubPermissions.StudentApplications.Default, L("Permission:StudentApplications"));
+        studentApplications.AddChild(NurseryHubPermissions.StudentApplications.Create, L("Permission:StudentApplications.Create"));
+        studentApplications.AddChild(NurseryHubPermissions.StudentApplications.Edit, L("Permission:StudentApplications.Edit"));
+        studentApplications.AddChild(NurseryHubPermissions.StudentApplications.Delete, L("Permission:StudentApplications.Delete"));
+
         var gradeCategories = myGroup.AddPermission(NurseryHubPermissions.GradeCategories.Default, L("Permission:GradeCategories"));
         gradeCategories.AddChild(NurseryHubPermissions.GradeCategories.Create, L("Permission:GradeCategories.Create"));
         gradeCategories.AddChild(NurseryHubPermissions.GradeCategories.Edit, L("Permission:GradeCategories.Edit"));
@@ -45,6 +50,12 @@ public class NurseryHubPermissionDefinitionProvider : PermissionDefinitionProvid
         nurseryClasses.AddChild(NurseryHubPermissions.NurseryClasses.Create, L("Permission:NurseryClasses.Create"));
         nurseryClasses.AddChild(NurseryHubPermissions.NurseryClasses.Edit, L("Permission:NurseryClasses.Edit"));
         nurseryClasses.AddChild(NurseryHubPermissions.NurseryClasses.Delete, L("Permission:NurseryClasses.Delete"));
+
+        var notifications = myGroup.AddPermission(NurseryHubPermissions.Notifications.Default, L("Permission:Notifications"));
+        notifications.AddChild(NurseryHubPermissions.Notifications.Create, L("Permission:Notifications.Create"));
+        notifications.AddChild(NurseryHubPermissions.Notifications.Edit, L("Permission:Notifications.Edit"));
+        notifications.AddChild(NurseryHubPermissions.Notifications.Delete, L("Permission:Notifications.Delete"));
+        notifications.AddChild(NurseryHubPermissions.Notifications.Send, L("Permission:Notifications.Send"));
     }
 
     private static LocalizableString L(string name)

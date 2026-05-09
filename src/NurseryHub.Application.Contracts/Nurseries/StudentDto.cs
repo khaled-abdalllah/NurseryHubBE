@@ -8,12 +8,15 @@ public class StudentDto : FullAuditedEntityDto<Guid>
     public Guid NurseryBranchId { get; set; }
     public Guid? NurseryClassId { get; set; }
     public string? NurseryClassName { get; set; }
+    /// <summary>FK to parent contact (father/mother details).</summary>
+    public Guid ParentId { get; set; }
     public string FullName { get; set; } = null!;
     public DateOnly BirthDate { get; set; }
     public string Gender { get; set; } = null!;
     public string? BloodType { get; set; }
     public string? Religion { get; set; }
     public string? HomeAddress { get; set; }
+    public decimal? WeightKg { get; set; }
     public string FatherName { get; set; } = null!;
     public string FatherIdentityNumber { get; set; } = null!;
     public string FatherPhoneNumber { get; set; } = null!;
@@ -33,6 +36,7 @@ public class StudentDto : FullAuditedEntityDto<Guid>
     public bool AttendsFriday { get; set; }
     public bool AttendsSaturday { get; set; }
     public string? MedicalNotes { get; set; }
+    public string? AllergyNotes { get; set; }
     public string? ProfileImageFileName { get; set; }
     public string? ProfileImageUrl { get; set; }
     public bool IsActive { get; set; }

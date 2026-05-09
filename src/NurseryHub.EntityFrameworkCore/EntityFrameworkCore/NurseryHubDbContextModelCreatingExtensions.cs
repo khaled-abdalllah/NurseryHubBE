@@ -133,6 +133,53 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<ParentContact>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "ParentContacts", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.FatherName).IsRequired().HasMaxLength(ParentContact.MaxFullNameLength);
+            b.Property(x => x.FatherIdentityNumber).IsRequired().HasMaxLength(ParentContact.MaxIdentityNumberLength);
+            b.Property(x => x.FatherPhoneNumber).IsRequired().HasMaxLength(ParentContact.MaxPhoneNumberLength);
+            b.Property(x => x.MotherName).IsRequired().HasMaxLength(ParentContact.MaxFullNameLength);
+            b.Property(x => x.MotherIdentityNumber).IsRequired().HasMaxLength(ParentContact.MaxIdentityNumberLength);
+            b.Property(x => x.MotherPhoneNumber).IsRequired().HasMaxLength(ParentContact.MaxPhoneNumberLength);
+
+            b.HasIndex(x => x.TenantId);
+        });
+
+        builder.Entity<StudentApplication>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "StudentApplications", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ChildFullName).IsRequired().HasMaxLength(StudentApplication.MaxChildFullNameLength);
+            b.Property(x => x.Gender).IsRequired().HasMaxLength(16);
+            b.Property(x => x.ParentFullName).IsRequired().HasMaxLength(StudentApplication.MaxParentFullNameLength);
+            b.Property(x => x.ParentPhoneNumber).IsRequired().HasMaxLength(StudentApplication.MaxPhoneNumberLength);
+            b.Property(x => x.SecondaryPhoneNumber).HasMaxLength(StudentApplication.MaxPhoneNumberLength);
+            b.Property(x => x.Email).HasMaxLength(StudentApplication.MaxEmailLength);
+            b.Property(x => x.Notes).HasMaxLength(StudentApplication.MaxNotesLength);
+            b.Property(x => x.Status).HasConversion<int>();
+
+            b.HasIndex(x => x.ParentPhoneNumber);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.BirthDate);
+
+            b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.CreationTime });
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.NurseryBranchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne<GradeCategory>()
+                .WithMany()
+                .HasForeignKey(x => x.RequestedGradeCategoryId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
         builder.Entity<Student>(b =>
         {
             b.ToTable(NurseryHubConsts.DbTablePrefix + "Students", NurseryHubConsts.DbSchema);
@@ -143,15 +190,11 @@ public static class NurseryHubDbContextModelCreatingExtensions
             b.Property(x => x.BloodType).HasMaxLength(Student.MaxBloodTypeLength);
             b.Property(x => x.Religion).HasMaxLength(Student.MaxReligionLength);
             b.Property(x => x.HomeAddress).HasMaxLength(Student.MaxHomeAddressLength);
-            b.Property(x => x.FatherName).IsRequired().HasMaxLength(Student.MaxFullNameLength);
-            b.Property(x => x.FatherIdentityNumber).IsRequired().HasMaxLength(Student.MaxIdentityNumberLength);
-            b.Property(x => x.FatherPhoneNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
-            b.Property(x => x.MotherName).IsRequired().HasMaxLength(Student.MaxFullNameLength);
-            b.Property(x => x.MotherIdentityNumber).IsRequired().HasMaxLength(Student.MaxIdentityNumberLength);
-            b.Property(x => x.MotherPhoneNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
             b.Property(x => x.EmergencyContactNumber).IsRequired().HasMaxLength(Student.MaxPhoneNumberLength);
             b.Property(x => x.HealthNotes).HasMaxLength(Student.MaxHealthNotesLength);
             b.Property(x => x.DietaryRestrictions).HasMaxLength(Student.MaxDietaryRestrictionsLength);
+            b.Property(x => x.AllergyNotes).HasMaxLength(Student.MaxAllergyNotesLength);
+            b.Property(x => x.WeightKg).HasColumnType("decimal(5,2)");
             b.Property(x => x.ToiletTrainingStatus).HasMaxLength(Student.MaxToiletTrainingStatusLength);
             b.Property(x => x.AttendsSunday).HasDefaultValue(false);
             b.Property(x => x.AttendsMonday).HasDefaultValue(false);
@@ -165,6 +208,7 @@ public static class NurseryHubDbContextModelCreatingExtensions
 
             b.HasIndex(x => new { x.TenantId, x.NurseryBranchId, x.FullName });
             b.HasIndex(x => new { x.TenantId, x.NurseryClassId });
+            b.HasIndex(x => x.ParentId);
 
             b.HasOne<NurseryBranch>()
                 .WithMany()
@@ -175,6 +219,11 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany()
                 .HasForeignKey(x => x.NurseryClassId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            b.HasOne(x => x.Parent)
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Payment>(b =>
@@ -241,6 +290,47 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany()
                 .HasForeignKey(x => x.NurseryBranchId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Notification>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "Notifications", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.Title).IsRequired().HasMaxLength(Notification.MaxTitleLength);
+            b.Property(x => x.Message).IsRequired().HasMaxLength(Notification.MaxMessageLength);
+            b.Property(x => x.NotificationType).HasConversion<int>();
+            b.Property(x => x.PriorityLevel).HasConversion<int>();
+            b.Property(x => x.AudienceType).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
+
+            b.HasIndex(x => x.BranchId);
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.NotificationType });
+            b.HasIndex(x => new { x.TenantId, x.CreationTime });
+
+            b.HasOne<NurseryBranch>()
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<NotificationRecipient>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "NotificationRecipients", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.DeliveryStatus).HasConversion<int>();
+            b.Property(x => x.FailureReason).HasMaxLength(NotificationRecipient.MaxFailureReasonLength);
+
+            b.HasIndex(x => x.NotificationId);
+            b.HasIndex(x => new { x.NotificationId, x.ParentUserId }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.DeliveryStatus });
+
+            b.HasOne<Notification>()
+                .WithMany()
+                .HasForeignKey(x => x.NotificationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Attendance>(b =>
@@ -334,6 +424,31 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany(x => x.Meals)
                 .HasForeignKey(x => x.DailyFollowupBookId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ParentStudent>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "ParentStudents", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.HasIndex(x => new { x.TenantId, x.ParentUserId });
+            b.HasIndex(x => new { x.TenantId, x.StudentId });
+            b.HasIndex(x => new { x.TenantId, x.ParentUserId, x.StudentId }).IsUnique();
+
+            b.HasOne<Volo.Abp.Identity.IdentityUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne<Volo.Abp.TenantManagement.Tenant>()
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<UserBranch>(b =>
