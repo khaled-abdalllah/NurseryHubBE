@@ -13,4 +13,6 @@ public interface IParentPortalAppService : IApplicationService
     Task<PagedResultDto<ParentFollowupTimelineItemDto>> GetFollowUpTimelineAsync(GetParentFollowupTimelineInput input);
 
     Task<ParentFollowupDetailsDto> GetFollowUpDetailsAsync(Guid id);
+
+    Task<ParentStudentAttendanceDayDto> GetAttendanceAsync(GetParentStudentAttendanceInput input);
 }

@@ -14,7 +14,11 @@ public class NurseryMediaOptions
     public string MediaRootPath { get; set; } = @"C:\Media";
 
     /// <summary>Allowed file extensions (lowercase, with dot).</summary>
-    public string[] AllowedImageExtensions { get; set; } = [".jpg", ".jpeg", ".jfif", ".png", ".gif", ".webp"];
+    public string[] AllowedImageExtensions { get; set; } =
+    [
+        ".jpg", ".jpeg", ".jfif", ".jpe", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".ico", ".avif",
+        ".heic", ".heif",
+    ];
 
     public long MaxLogoBytes { get; set; } = 5 * 1024 * 1024;
     public long MaxStudentImageBytes { get; set; } = 5 * 1024 * 1024;

@@ -25,6 +25,7 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
     private readonly IRepository<DailyFollowupSubjectEntry, Guid> _subjectRepository;
     private readonly IRepository<DailyFollowupActivityEntry, Guid> _activityRepository;
     private readonly IRepository<DailyFollowupMealEntry, Guid> _mealRepository;
+    private readonly IRepository<Attendance, Guid> _attendanceRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly NurseryMediaOptions _mediaOptions;
 
@@ -37,6 +38,7 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         IRepository<DailyFollowupSubjectEntry, Guid> subjectRepository,
         IRepository<DailyFollowupActivityEntry, Guid> activityRepository,
         IRepository<DailyFollowupMealEntry, Guid> mealRepository,
+        IRepository<Attendance, Guid> attendanceRepository,
         ITenantRepository tenantRepository,
         IOptions<NurseryMediaOptions> mediaOptions)
     {
@@ -48,6 +50,7 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         _subjectRepository = subjectRepository;
         _activityRepository = activityRepository;
         _mealRepository = mealRepository;
+        _attendanceRepository = attendanceRepository;
         _tenantRepository = tenantRepository;
         _mediaOptions = mediaOptions.Value;
     }
@@ -150,6 +153,31 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         }
 
         return new PagedResultDto<ParentFollowupTimelineItemDto>(totalCount, items);
+    }
+
+    public async Task<ParentStudentAttendanceDayDto> GetAttendanceAsync(GetParentStudentAttendanceInput input)
+    {
+        await EnsureParentCanAccessStudentAsync(input.StudentId);
+        var row = await _attendanceRepository.FirstOrDefaultAsync(
+            x => x.StudentId == input.StudentId && x.Date == input.Date);
+        if (row == null)
+        {
+            return new ParentStudentAttendanceDayDto
+            {
+                Date = input.Date,
+                HasAttendanceRecord = false,
+                Status = null,
+            };
+        }
+
+        return new ParentStudentAttendanceDayDto
+        {
+            Date = row.Date,
+            HasAttendanceRecord = true,
+            Status = row.Status,
+            CheckedInAt = row.CheckedInAt,
+            CheckedOutAt = row.CheckedOutAt,
+        };
     }
 
     public async Task<ParentFollowupDetailsDto> GetFollowUpDetailsAsync(Guid id)

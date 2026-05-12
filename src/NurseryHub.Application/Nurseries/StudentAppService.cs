@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -37,6 +38,8 @@ public class StudentAppService
     private readonly IIdentityRoleRepository _identityRoleRepository;
     private readonly IdentityRoleManager _identityRoleManager;
     private readonly IdentityUserManager _identityUserManager;
+
+    private const string DefaultParentPortalPassword = "Aa@12345678";
 
     public StudentAppService(
         IRepository<Student, Guid> repository,
@@ -141,6 +144,23 @@ public class StudentAppService
         var rawItems = await AsyncExecuter.ToListAsync(
             query.OrderBy(x => x.FullName).Skip(input.SkipCount).Take(input.MaxResultCount));
 
+        var studentIds = rawItems.Select(x => x.Id).ToList();
+        HashSet<Guid> studentIdsWithPortalLink;
+        if (studentIds.Count == 0)
+        {
+            studentIdsWithPortalLink = new HashSet<Guid>();
+        }
+        else
+        {
+            var parentStudents = await _parentStudentRepository.GetQueryableAsync();
+            var linkedIds = await AsyncExecuter.ToListAsync(
+                parentStudents
+                    .Where(p => studentIds.Contains(p.StudentId))
+                    .Select(p => p.StudentId)
+                    .Distinct());
+            studentIdsWithPortalLink = linkedIds.ToHashSet();
+        }
+
         var items = rawItems.Select(x => new StudentDto
         {
             Id = x.Id,
@@ -178,6 +198,7 @@ public class StudentAppService
             ProfileImageFileName = x.ProfileImageFileName,
             ProfileImageUrl = ResolveStudentImageDisplayUrl(x.ProfileImageFileName, tenantName),
             IsActive = x.IsActive,
+            HasLinkedParentPortalAccount = studentIdsWithPortalLink.Contains(x.Id),
             CreationTime = x.CreationTime,
             CreatorId = x.CreatorId,
             LastModificationTime = x.LastModificationTime,
@@ -201,8 +222,9 @@ public class StudentAppService
         entity.SetIsActive(true);
         await Repository.InsertAsync(entity, autoSave: true);
         await CreateParentPortalAccountIfNeededAsync(input, entity);
+        await EnsureParentStudentLinksForExistingPortalUsersAsync(input, entity);
         var parent = await _parentContactRepository.GetAsync(entity.ParentId);
-        var dto = MapToGetOutputDto(entity, parent);
+        var dto = await BuildStudentDtoAsync(entity, parent);
         dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(dto.ProfileImageFileName, CurrentTenant.Name);
         return dto;
     }
@@ -223,8 +245,9 @@ public class StudentAppService
         await MapToEntityAsync(input, entity);
         await Repository.UpdateAsync(entity, autoSave: true);
         await CreateParentPortalAccountIfNeededAsync(input, entity);
+        await EnsureParentStudentLinksForExistingPortalUsersAsync(input, entity);
         var parent = await _parentContactRepository.GetAsync(entity.ParentId);
-        var dto = MapToGetOutputDto(entity, parent);
+        var dto = await BuildStudentDtoAsync(entity, parent);
         dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(dto.ProfileImageFileName, CurrentTenant.Name);
         return dto;
     }
@@ -237,7 +260,7 @@ public class StudentAppService
             ? await _nurseryClassRepository.FindAsync(entity.NurseryClassId.Value)
             : null;
 
-        var dto = MapToGetOutputDto(entity, parent);
+        var dto = await BuildStudentDtoAsync(entity, parent);
         dto.NurseryClassName = nurseryClass?.Name;
         dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(dto.ProfileImageFileName, CurrentTenant.Name);
         return dto;
@@ -266,7 +289,7 @@ public class StudentAppService
         await Repository.UpdateAsync(entity, autoSave: true);
 
         var parent = await _parentContactRepository.GetAsync(entity.ParentId);
-        var dto = MapToGetOutputDto(entity, parent);
+        var dto = await BuildStudentDtoAsync(entity, parent);
         dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(entity.ProfileImageFileName, tenantName);
         return dto;
     }
@@ -444,12 +467,13 @@ public class StudentAppService
         return AsyncHelper.RunSync(async () =>
         {
             var parent = await _parentContactRepository.GetAsync(entity.ParentId);
-            return MapToGetOutputDto(entity, parent);
+            return await BuildStudentDtoAsync(entity, parent);
         });
     }
 
-    protected StudentDto MapToGetOutputDto(Student entity, ParentContact parent)
+    private async Task<StudentDto> BuildStudentDtoAsync(Student entity, ParentContact parent)
     {
+        var hasPortalLink = await _parentStudentRepository.AnyAsync(p => p.StudentId == entity.Id);
         return new StudentDto
         {
             Id = entity.Id,
@@ -486,6 +510,7 @@ public class StudentAppService
             ProfileImageFileName = entity.ProfileImageFileName,
             ProfileImageUrl = ResolveStudentImageDisplayUrl(entity.ProfileImageFileName, CurrentTenant.Name),
             IsActive = entity.IsActive,
+            HasLinkedParentPortalAccount = hasPortalLink,
             CreationTime = entity.CreationTime,
             CreatorId = entity.CreatorId,
             LastModificationTime = entity.LastModificationTime,
@@ -718,7 +743,7 @@ public class StudentAppService
                 Surname = lastName,
             };
             user.SetIsActive(true);
-            var createResult = await _identityUserManager.CreateAsync(user, password: userName);
+            var createResult = await _identityUserManager.CreateAsync(user, password: DefaultParentPortalPassword);
             ThrowIfFailed(createResult);
             var phoneResult = await _identityUserManager.SetPhoneNumberAsync(user, userName);
             ThrowIfFailed(phoneResult);
@@ -774,6 +799,61 @@ public class StudentAppService
         await _parentStudentRepository.InsertAsync(
             new ParentStudent(GuidGenerator.Create(), tenantId, parentUserId, studentId),
             autoSave: true);
+    }
+
+    /// <summary>
+    /// For each parent phone on the student that already matches a tenant identity user with the Parent role,
+    /// ensures an <c>AppParentStudents</c> row exists (e.g. new sibling or linked parent contact when "create account" is off).
+    /// </summary>
+    private async Task EnsureParentStudentLinksForExistingPortalUsersAsync(CreateUpdateStudentDto input, Student entity)
+    {
+        if (!entity.TenantId.HasValue)
+        {
+            return;
+        }
+
+        var tenantId = entity.TenantId.Value;
+        var phones = new HashSet<string>(StringComparer.Ordinal);
+        if (!input.FatherPhoneNumber.IsNullOrWhiteSpace())
+        {
+            phones.Add(input.FatherPhoneNumber.Trim());
+        }
+
+        if (!input.MotherPhoneNumber.IsNullOrWhiteSpace())
+        {
+            phones.Add(input.MotherPhoneNumber.Trim());
+        }
+
+        if (phones.Count == 0)
+        {
+            return;
+        }
+
+        using (CurrentTenant.Change(tenantId))
+        {
+            foreach (var phone in phones)
+            {
+                if (phone.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
+
+                var normalizedUserName = _identityUserManager.NormalizeName(phone);
+                var user = await _identityUserRepository.FindByNormalizedUserNameAsync(normalizedUserName);
+                if (user == null || user.TenantId != tenantId)
+                {
+                    continue;
+                }
+
+                var roles = await _identityUserManager.GetRolesAsync(user);
+                if (!roles.Any(r => r.Equals(NurseryHubRoles.Parent, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                await EnsureParentStudentLinkAsync(user.Id, entity.Id, tenantId);
+            }
+        }
     }
 
     private static string BuildSyntheticParentEmail(Guid userId)

@@ -110,7 +110,7 @@ public class CreateUpdateStudentDto
     public bool CreateParentPortalAccount { get; set; }
 
     /// <summary>
-    /// Required when <see cref="CreateParentPortalAccount"/> is true — whose phone becomes username/password.
+    /// Required when <see cref="CreateParentPortalAccount"/> is true — whose phone becomes the login username (default password is set server-side).
     /// </summary>
     public ParentPortalLoginUsernameSource? ParentLoginUsernameSource { get; set; }
 }

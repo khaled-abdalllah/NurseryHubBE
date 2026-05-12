@@ -40,4 +40,7 @@ public class StudentDto : FullAuditedEntityDto<Guid>
     public string? ProfileImageFileName { get; set; }
     public string? ProfileImageUrl { get; set; }
     public bool IsActive { get; set; }
+
+    /// <summary>True when at least one parent identity user is linked to this student (parent portal).</summary>
+    public bool HasLinkedParentPortalAccount { get; set; }
 }

@@ -21,6 +21,12 @@ public class GetParentFollowupTimelineInput : PagedResultRequestDto
     public int? Month { get; set; }
 }
 
+public class GetParentStudentAttendanceInput
+{
+    public Guid StudentId { get; set; }
+    public DateOnly Date { get; set; }
+}
+
 public class ParentFollowupTimelineItemDto : EntityDto<Guid>
 {
     public DateOnly ReportDate { get; set; }
@@ -41,4 +47,13 @@ public class ParentFollowupDetailsDto : ParentFollowupTimelineItemDto
     public string? StudentPhoto { get; set; }
     public string? ClassName { get; set; }
     public string? GradeName { get; set; }
+}
+
+public class ParentStudentAttendanceDayDto
+{
+    public DateOnly Date { get; set; }
+    public bool HasAttendanceRecord { get; set; }
+    public AttendanceStatus? Status { get; set; }
+    public DateTime? CheckedInAt { get; set; }
+    public DateTime? CheckedOutAt { get; set; }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
@@ -9,15 +10,10 @@ namespace NurseryHub.Nurseries;
 
 public class UploadStudentImageInputValidator : AbstractValidator<UploadStudentImageInput>
 {
-    private static readonly HashSet<string> AllowedStudentExtensions =
-        [".png", ".jpg", ".jpeg", ".webp"];
-
-    private static readonly HashSet<string> AllowedStudentContentTypes =
-        ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-
     public UploadStudentImageInputValidator(IOptions<NurseryMediaOptions> mediaOptions)
     {
         var options = mediaOptions.Value;
+        var allowed = options.AllowedImageExtensions.Select(e => e.ToLowerInvariant()).ToHashSet();
 
         RuleFor(x => x.File)
             .NotNull()
@@ -34,26 +30,24 @@ public class UploadStudentImageInputValidator : AbstractValidator<UploadStudentI
             .WithMessage("حجم الصورة يجب ألا يتجاوز 5 ميجا");
 
         RuleFor(x => x.File!)
-            .Must(IsAllowedStudentImage)
-            .When(x => x.File != null)
-            .WithMessage("نوع الملف غير مدعوم");
-
-        RuleFor(x => x.File!)
-            .Must(f =>
-                string.IsNullOrEmpty(f.ContentType) ||
-                AllowedStudentContentTypes.Contains(f.ContentType.ToLowerInvariant()))
+            .Must(f => IsAllowedStudentImage(f, allowed))
             .When(x => x.File != null)
             .WithMessage("نوع الملف غير مدعوم");
     }
 
-    private static bool IsAllowedStudentImage(IFormFile file)
+    private static bool IsAllowedStudentImage(IFormFile file, HashSet<string> allowedExtensions)
     {
         var ext = Path.GetExtension(file.FileName);
-        if (string.IsNullOrEmpty(ext))
+        if (string.IsNullOrEmpty(ext) || !allowedExtensions.Contains(ext.ToLowerInvariant()))
         {
             return false;
         }
 
-        return AllowedStudentExtensions.Contains(ext.ToLowerInvariant());
+        if (string.IsNullOrEmpty(file.ContentType))
+        {
+            return true;
+        }
+
+        return file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 }
