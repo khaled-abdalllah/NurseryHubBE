@@ -9,6 +9,8 @@ using NurseryHub.Security;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Authorization;
+using Volo.Abp.Users;
 using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
@@ -16,7 +18,8 @@ using Volo.Abp.MultiTenancy;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher},{NurseryHubRoles.Accountant}")]
 public class NurseryBranchAppService
     : CrudAppService<
             NurseryBranch,
@@ -55,8 +58,29 @@ public class NurseryBranchAppService
         _dataFilter = dataFilter;
     }
 
+    private static bool UserIsInAnyRole(ICurrentUser user, params string[] roles)
+    {
+        var userRoles = user.Roles;
+        if (userRoles == null || !userRoles.Any())
+        {
+            return false;
+        }
+
+        return roles.Any(
+            r => userRoles.Any(ur => string.Equals(ur, r, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private void EnsureCanManageBranchCrud()
+    {
+        if (!UserIsInAnyRole(CurrentUser, NurseryHubRoles.Admin, NurseryHubRoles.NurseryAdmin))
+        {
+            throw new AbpAuthorizationException();
+        }
+    }
+
     public override async Task<NurseryBranchDto> CreateAsync(CreateUpdateNurseryBranchDto input)
     {
+        EnsureCanManageBranchCrud();
         Nursery nursery;
        nursery = await _nurseryRepository.GetAsync(input.NurseryId);
 
@@ -122,6 +146,7 @@ public class NurseryBranchAppService
 
     public override async Task<PagedResultDto<NurseryBranchDto>> GetListAsync(GetNurseryBranchesInput input)
     {
+        EnsureCanManageBranchCrud();
         // Host admin: nurseries use each nursery's TenantId, so IMultiTenant hides them from the join unless disabled.
         using (_dataFilter.Disable<IMultiTenant>())
         {
@@ -236,8 +261,21 @@ public class NurseryBranchAppService
         return $"{baseUrl}/logo/{fileName}";
     }
 
+    public override async Task<NurseryBranchDto> UpdateAsync(Guid id, CreateUpdateNurseryBranchDto input)
+    {
+        EnsureCanManageBranchCrud();
+        return await base.UpdateAsync(id, input);
+    }
+
+    public override async Task DeleteAsync(Guid id)
+    {
+        EnsureCanManageBranchCrud();
+        await base.DeleteAsync(id);
+    }
+
     public override async Task<NurseryBranchDto> GetAsync(Guid id)
     {
+        EnsureCanManageBranchCrud();
         using (_dataFilter.Disable<IMultiTenant>())
         {
             var entity = await Repository.GetAsync(id);

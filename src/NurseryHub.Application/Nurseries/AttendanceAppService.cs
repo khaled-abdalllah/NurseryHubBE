@@ -12,7 +12,8 @@ using Volo.Abp.TenantManagement;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class AttendanceAppService : ApplicationService, IAttendanceAppService
 {
     private readonly IRepository<Attendance, Guid> _attendanceRepository;

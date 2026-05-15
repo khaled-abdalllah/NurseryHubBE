@@ -12,12 +12,14 @@ using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class NotificationAppService : ApplicationService, INotificationAppService
 {
     private readonly IRepository<Notification, Guid> _notificationRepository;
     private readonly IRepository<NotificationRecipient, Guid> _recipientRepository;
     private readonly IRepository<Student, Guid> _studentRepository;
+    private readonly IRepository<ParentStudent, Guid> _parentStudentRepository;
     private readonly IRepository<ParentContact, Guid> _parentContactRepository;
     private readonly IRepository<NurseryClass, Guid> _classRepository;
     private readonly IRepository<NurseryBranch, Guid> _branchRepository;
@@ -29,6 +31,7 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
         IRepository<Notification, Guid> notificationRepository,
         IRepository<NotificationRecipient, Guid> recipientRepository,
         IRepository<Student, Guid> studentRepository,
+        IRepository<ParentStudent, Guid> parentStudentRepository,
         IRepository<ParentContact, Guid> parentContactRepository,
         IRepository<NurseryClass, Guid> classRepository,
         IRepository<NurseryBranch, Guid> branchRepository,
@@ -39,6 +42,7 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
         _notificationRepository = notificationRepository;
         _recipientRepository = recipientRepository;
         _studentRepository = studentRepository;
+        _parentStudentRepository = parentStudentRepository;
         _parentContactRepository = parentContactRepository;
         _classRepository = classRepository;
         _branchRepository = branchRepository;
@@ -53,8 +57,10 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
         var notifications = await _notificationRepository.GetQueryableAsync();
         var recipients = await _recipientRepository.GetQueryableAsync();
 
-        var query = notifications
+        var baseQuery = notifications
             .Where(x => accessibleBranchIds.Contains(x.BranchId))
+            .WhereIf(input.ParentMessagesInbox == true, x => x.AudienceType == NotificationAudienceType.ParentToNursery)
+            .WhereIf(input.ParentMessagesInbox != true, x => x.AudienceType != NotificationAudienceType.ParentToNursery)
             .WhereIf(input.NotificationType.HasValue, x => x.NotificationType == input.NotificationType)
             .WhereIf(input.PriorityLevel.HasValue, x => x.PriorityLevel == input.PriorityLevel)
             .WhereIf(input.Status.HasValue, x => x.Status == input.Status)
@@ -62,20 +68,56 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
             .WhereIf(input.DateTo.HasValue, x => x.SentDate <= input.DateTo)
             .WhereIf(!input.Filter.IsNullOrWhiteSpace(), x => x.Title.Contains(input.Filter!) || x.Message.Contains(input.Filter!));
 
-        var projected = query.Select(x => new NotificationListDto
+        IQueryable<NotificationListDto> projected;
+        if (input.ParentMessagesInbox == true)
         {
-            Id = x.Id,
-            Title = x.Title,
-            NotificationType = x.NotificationType,
-            AudienceType = x.AudienceType,
-            SentByUserId = x.SentByUserId,
-            SentDate = x.SentDate,
-            Status = x.Status,
-            TotalRecipients = x.TotalRecipients,
-            DeliveredCount = recipients.Count(r => r.NotificationId == x.Id && r.DeliveryStatus == NotificationDeliveryStatus.Delivered),
-            FailedCount = recipients.Count(r => r.NotificationId == x.Id && r.DeliveryStatus == NotificationDeliveryStatus.Failed),
-            ReadCount = recipients.Count(r => r.NotificationId == x.Id && r.DeliveryStatus == NotificationDeliveryStatus.Read),
-        });
+            var students = await _studentRepository.GetQueryableAsync();
+            projected =
+                from n in baseQuery
+                join s in students on n.RelatedStudentId equals s.Id into studentJoin
+                from s in studentJoin.DefaultIfEmpty()
+                select new NotificationListDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Message = n.Message,
+                    RelatedStudentName = s != null ? s.FullName : null,
+                    NotificationType = n.NotificationType,
+                    AudienceType = n.AudienceType,
+                    SentByUserId = n.SentByUserId,
+                    SentDate = n.SentDate,
+                    Status = n.Status,
+                    TotalRecipients = n.TotalRecipients,
+                    DeliveredCount = recipients.Count(r =>
+                        r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Delivered),
+                    FailedCount = recipients.Count(r =>
+                        r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Failed),
+                    ReadCount = recipients.Count(r =>
+                        r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Read),
+                };
+        }
+        else
+        {
+            projected = baseQuery.Select(n => new NotificationListDto
+            {
+                Id = n.Id,
+                Title = n.Title,
+                Message = n.Message,
+                RelatedStudentName = null,
+                NotificationType = n.NotificationType,
+                AudienceType = n.AudienceType,
+                SentByUserId = n.SentByUserId,
+                SentDate = n.SentDate,
+                Status = n.Status,
+                TotalRecipients = n.TotalRecipients,
+                DeliveredCount = recipients.Count(r =>
+                    r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Delivered),
+                FailedCount = recipients.Count(r =>
+                    r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Failed),
+                ReadCount = recipients.Count(r =>
+                    r.NotificationId == n.Id && r.DeliveryStatus == NotificationDeliveryStatus.Read),
+            });
+        }
 
         var totalCount = await AsyncExecuter.CountAsync(projected);
         var items = await AsyncExecuter.ToListAsync(
@@ -123,11 +165,27 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
 
     public async Task<NotificationDto> CreateAsync(CreateUpdateNotificationDto input)
     {
+        if (input.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new UserFriendlyException(L["NurseryHub:Notification:ParentToNurseryNotSupported"]);
+        }
+
         var branchId = await ResolveBranchIdAsync(input.BranchId);
         var entity = new Notification(GuidGenerator.Create(), CurrentTenant.Id, input.Title, input.Message,
             input.NotificationType, input.PriorityLevel, input.AudienceType, CurrentUser.Id ?? Guid.Empty, branchId);
         entity.SetSchedule(input.IsScheduled ? input.ScheduledDate : null);
         await _notificationRepository.InsertAsync(entity, autoSave: true);
+
+        if (input.AudienceType == NotificationAudienceType.SelectedParents)
+        {
+            var ids = input.SelectedParentIds.Distinct().ToList();
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var recipient = new NotificationRecipient(GuidGenerator.Create(), CurrentTenant.Id, entity.Id, ids[i]);
+                await _recipientRepository.InsertAsync(recipient, autoSave: i == ids.Count - 1);
+            }
+        }
+
         return await MapAsync(entity);
     }
 
@@ -135,6 +193,11 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
     {
         var entity = await _notificationRepository.GetAsync(id);
         await EnsureCanAccessBranchAsync(entity.BranchId);
+        if (entity.AudienceType == NotificationAudienceType.ParentToNursery || input.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new UserFriendlyException(L["NurseryHub:Notification:ParentToNurseryNotSupported"]);
+        }
+
         entity.SetContent(input.Title, input.Message, input.NotificationType, input.PriorityLevel, input.AudienceType);
         entity.SetSchedule(input.IsScheduled ? input.ScheduledDate : null);
         await _notificationRepository.UpdateAsync(entity, autoSave: true);
@@ -145,6 +208,11 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
     {
         var entity = await _notificationRepository.GetAsync(id);
         await EnsureCanAccessBranchAsync(entity.BranchId);
+        if (entity.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new AbpAuthorizationException("This notification cannot be deleted from the nursery compose module.");
+        }
+
         await _notificationRepository.DeleteAsync(entity);
     }
 
@@ -152,6 +220,16 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
     {
         var entity = await _notificationRepository.GetAsync(id);
         await EnsureCanAccessBranchAsync(entity.BranchId);
+        if (entity.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new UserFriendlyException(L["NurseryHub:Notification:ParentToNurseryNotSupported"]);
+        }
+
+        if (entity.Status == NotificationStatus.Sent)
+        {
+            throw new UserFriendlyException(L["NurseryHub:Notification:AlreadySent"]);
+        }
+
         entity.MarkSending();
         await _notificationRepository.UpdateAsync(entity, autoSave: true);
 
@@ -165,6 +243,11 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
     {
         var entity = await _notificationRepository.GetAsync(id);
         await EnsureCanAccessBranchAsync(entity.BranchId);
+        if (entity.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new UserFriendlyException(L["NurseryHub:Notification:ParentToNurseryNotSupported"]);
+        }
+
         entity.SetSchedule(scheduledDate);
         await _notificationRepository.UpdateAsync(entity, autoSave: true);
     }
@@ -174,12 +257,14 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
         var accessibleBranchIds = await GetAccessibleBranchIdsAsync(input.BranchId);
         var students = await _studentRepository.GetQueryableAsync();
         var parents = await _parentContactRepository.GetQueryableAsync();
+        var parentStudents = await _parentStudentRepository.GetQueryableAsync();
         var classes = await _classRepository.GetQueryableAsync();
         var branches = await _branchRepository.GetQueryableAsync();
         var gradeCategories = await _gradeCategoryRepository.GetQueryableAsync();
 
         var query = from s in students
             join p in parents on s.ParentId equals p.Id
+            join ps in parentStudents on s.Id equals ps.StudentId
             join b in branches on s.NurseryBranchId equals b.Id
             join c in classes on s.NurseryClassId equals c.Id into classJoin
             from c in classJoin.DefaultIfEmpty()
@@ -188,7 +273,7 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
             where accessibleBranchIds.Contains(s.NurseryBranchId)
             select new ParentSelectionDto
             {
-                ParentId = s.Id,
+                ParentId = ps.ParentUserId,
                 ParentName = p.FatherName,
                 StudentName = s.FullName,
                 ClassName = c != null ? c.Name : null,
@@ -210,6 +295,11 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
 
     private async Task<List<Guid>> ResolveParentIdsAsync(Guid branchId, NotificationAudienceType audienceType, Guid notificationId)
     {
+        if (audienceType == NotificationAudienceType.ParentToNursery)
+        {
+            return new List<Guid>();
+        }
+
         if (audienceType == NotificationAudienceType.SelectedParents)
         {
             var existing = await _recipientRepository.GetListAsync(x => x.NotificationId == notificationId);
@@ -220,7 +310,15 @@ public class NotificationAppService : ApplicationService, INotificationAppServic
         }
 
         var students = await _studentRepository.GetQueryableAsync();
-        return await AsyncExecuter.ToListAsync(students.Where(x => x.NurseryBranchId == branchId).Select(x => x.Id).Distinct());
+        var parentStudents = await _parentStudentRepository.GetQueryableAsync();
+
+        var parentUserIds =
+            from s in students
+            join ps in parentStudents on s.Id equals ps.StudentId
+            where s.NurseryBranchId == branchId
+            select ps.ParentUserId;
+
+        return await AsyncExecuter.ToListAsync(parentUserIds.Distinct());
     }
 
     private async Task<NotificationDto> MapAsync(Notification entity)

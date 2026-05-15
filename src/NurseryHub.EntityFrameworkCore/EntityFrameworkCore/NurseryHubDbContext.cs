@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NurseryHub.Locations;
 using NurseryHub.Nurseries;
+using NurseryHub.Portal;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.BlobStoring.Database.EntityFrameworkCore;
@@ -48,6 +49,7 @@ public class NurseryHubDbContext :
     public DbSet<UserBranch> UserBranches { get; set; }
     public DbSet<Governorate> Governorates { get; set; }
     public DbSet<City> Cities { get; set; }
+    public DbSet<PackageSubscriptionInquiry> PackageSubscriptionInquiries { get; set; }
 
 
     #region Entities from the modules

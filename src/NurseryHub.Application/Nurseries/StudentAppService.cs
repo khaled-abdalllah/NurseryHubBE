@@ -10,6 +10,7 @@ using NurseryHub.Security;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.TenantManagement;
 using Volo.Abp.Identity;
@@ -17,7 +18,8 @@ using Volo.Abp.Threading;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class StudentAppService
     : CrudAppService<
             Student,
@@ -239,6 +241,12 @@ public class StudentAppService
         }
 
         TrimCreateUpdateStudentDto(input);
+        var parent = await _parentContactRepository.GetAsync(entity.ParentId);
+        if (IsPortalTeacherRestricted() && !IsTeacherAllowedClassAssignmentOrNoopUpdate(entity, parent, input))
+        {
+            throw new AbpAuthorizationException();
+        }
+
         var tenantId = entity.TenantId ?? await ResolveTenantIdForCreationAsync(input.NurseryBranchId);
         await ValidateParentContactNoConflictsAsync(input, tenantId, entity.ParentId);
         ValidateParentPortalRequest(input);
@@ -246,7 +254,6 @@ public class StudentAppService
         await Repository.UpdateAsync(entity, autoSave: true);
         await CreateParentPortalAccountIfNeededAsync(input, entity);
         await EnsureParentStudentLinksForExistingPortalUsersAsync(input, entity);
-        var parent = await _parentContactRepository.GetAsync(entity.ParentId);
         var dto = await BuildStudentDtoAsync(entity, parent);
         dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(dto.ProfileImageFileName, CurrentTenant.Name);
         return dto;
@@ -268,6 +275,11 @@ public class StudentAppService
 
     public virtual async Task<StudentDto> UploadImageAsync(Guid id, UploadStudentImageInput input)
     {
+        if (IsPortalTeacherRestricted())
+        {
+            throw new AbpAuthorizationException();
+        }
+
         var entity = await GetEntityByIdAsync(id);
         EnsureStudentIsActive(entity);
         var file = input.File;
@@ -296,6 +308,11 @@ public class StudentAppService
 
     public override async Task DeleteAsync(Guid id)
     {
+        if (IsPortalTeacherRestricted())
+        {
+            throw new AbpAuthorizationException();
+        }
+
         var entity = await Repository.GetAsync(id);
         EnsureStudentIsActive(entity);
         var parentId = entity.ParentId;
@@ -571,6 +588,103 @@ public class StudentAppService
         {
             throw new BusinessException("NurseryHub:Student:Inactive");
         }
+    }
+
+    /// <summary>
+    /// Teachers may view students and assign classes but must not edit profiles, deactivate, or delete.
+    /// Users who also hold admin / nursery admin / branch manager are not restricted here.
+    /// </summary>
+    private bool IsPortalTeacherRestricted()
+    {
+        if (CurrentUser.Roles == null || !CurrentUser.Roles.Any())
+        {
+            return false;
+        }
+
+        var hasTeacher = CurrentUser.Roles.Any(r =>
+            string.Equals(r, NurseryHubRoles.Teacher, StringComparison.OrdinalIgnoreCase));
+        if (!hasTeacher)
+        {
+            return false;
+        }
+
+        var elevated = CurrentUser.Roles.Any(r =>
+            string.Equals(r, NurseryHubRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(r, NurseryHubRoles.NurseryAdmin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(r, NurseryHubRoles.BranchManager, StringComparison.OrdinalIgnoreCase));
+
+        return !elevated;
+    }
+
+    /// <summary>
+    /// Allowed updates for a restricted teacher: no-op, or only <see cref="CreateUpdateStudentDto.NurseryClassId"/> changes.
+    /// </summary>
+    private static bool IsTeacherAllowedClassAssignmentOrNoopUpdate(
+        Student entity,
+        ParentContact parent,
+        CreateUpdateStudentDto input)
+    {
+        if (input.IsActive != entity.IsActive)
+        {
+            return false;
+        }
+
+        if (input.NurseryBranchId != entity.NurseryBranchId)
+        {
+            return false;
+        }
+
+        if (input.CreateParentPortalAccount || input.ParentLoginUsernameSource.HasValue)
+        {
+            return false;
+        }
+
+        if (input.ExistingParentContactId.HasValue && input.ExistingParentContactId.Value != entity.ParentId)
+        {
+            return false;
+        }
+
+        if (input.FullName != entity.FullName ||
+            input.BirthDate != entity.BirthDate ||
+            input.Gender != entity.Gender ||
+            !SameNullableText(input.BloodType, entity.BloodType) ||
+            !SameNullableText(input.Religion, entity.Religion) ||
+            !SameNullableText(input.HomeAddress, entity.HomeAddress) ||
+            input.EmergencyContactNumber != entity.EmergencyContactNumber ||
+            input.EnrollmentDate != entity.EnrollmentDate ||
+            !SameNullableText(input.HealthNotes, entity.HealthNotes) ||
+            !SameNullableText(input.DietaryRestrictions, entity.DietaryRestrictions) ||
+            !SameNullableText(input.ToiletTrainingStatus, entity.ToiletTrainingStatus) ||
+            input.AttendsSunday != entity.AttendsSunday ||
+            input.AttendsMonday != entity.AttendsMonday ||
+            input.AttendsTuesday != entity.AttendsTuesday ||
+            input.AttendsWednesday != entity.AttendsWednesday ||
+            input.AttendsThursday != entity.AttendsThursday ||
+            input.AttendsFriday != entity.AttendsFriday ||
+            input.AttendsSaturday != entity.AttendsSaturday ||
+            !SameNullableText(input.MedicalNotes, entity.MedicalNotes) ||
+            !SameNullableText(input.AllergyNotes, entity.AllergyNotes) ||
+            !Nullable.Equals(input.WeightKg, entity.WeightKg))
+        {
+            return false;
+        }
+
+        if (input.FatherName != parent.FatherName ||
+            !SameNullableText(input.FatherIdentityNumber, parent.FatherIdentityNumber) ||
+            input.FatherPhoneNumber != parent.FatherPhoneNumber ||
+            !SameNullableText(input.MotherName, parent.MotherName) ||
+            !SameNullableText(input.MotherIdentityNumber, parent.MotherIdentityNumber) ||
+            !SameNullableText(input.MotherPhoneNumber, parent.MotherPhoneNumber))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool SameNullableText(string? a, string? b)
+    {
+        return string.Equals(NullIfWhiteSpace(a), NullIfWhiteSpace(b), StringComparison.Ordinal);
     }
 
     private static bool TenantMatchesParent(Guid expectedTenantId, Guid? parentTenantId)

@@ -57,3 +57,47 @@ public class ParentStudentAttendanceDayDto
     public DateTime? CheckedInAt { get; set; }
     public DateTime? CheckedOutAt { get; set; }
 }
+
+public class ParentPortalNotificationDto
+{
+    public Guid RecipientId { get; set; }
+    public Guid NotificationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public NotificationType NotificationType { get; set; }
+    public PriorityLevel PriorityLevel { get; set; }
+    public DateTime? SentDate { get; set; }
+    public NotificationDeliveryStatus DeliveryStatus { get; set; }
+    public DateTime? ReadAt { get; set; }
+}
+
+public class ParentPortalSentToNurseryNotificationDto
+{
+    public Guid NotificationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime? SentDate { get; set; }
+    public string? StudentName { get; set; }
+}
+
+public class SendParentToNurseryNotificationDto
+{
+    public Guid StudentId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+}
+
+public class NurseryStaffInboxNotificationDto
+{
+    public Guid RecipientId { get; set; }
+    public Guid NotificationId { get; set; }
+    public Guid SentByUserId { get; set; }
+    public string? StudentName { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public NotificationType NotificationType { get; set; }
+    public PriorityLevel PriorityLevel { get; set; }
+    public DateTime? SentDate { get; set; }
+    public NotificationDeliveryStatus DeliveryStatus { get; set; }
+    public DateTime? ReadAt { get; set; }
+}

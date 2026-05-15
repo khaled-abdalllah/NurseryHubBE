@@ -6,6 +6,8 @@ public class NotificationListDto
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = null!;
+    public string Message { get; set; } = string.Empty;
+    public string? RelatedStudentName { get; set; }
     public NotificationType NotificationType { get; set; }
     public NotificationAudienceType AudienceType { get; set; }
     public Guid SentByUserId { get; set; }

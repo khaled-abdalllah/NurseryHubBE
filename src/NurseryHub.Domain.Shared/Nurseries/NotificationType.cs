@@ -9,4 +9,6 @@ public enum NotificationType
     EmergencyNotice = 5,
     ActivityUpdate = 6,
     HomeworkReminder = 7,
+    /// <summary>Message sent by a parent to the nursery branch inbox.</summary>
+    ParentMessage = 8,
 }

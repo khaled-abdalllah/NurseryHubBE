@@ -15,7 +15,8 @@ namespace NurseryHub.Nurseries;
 /// HTTP route is implemented explicitly in <c>ParentContactLookupController</c> so the URL is stable.
 /// </summary>
 [RemoteService(IsEnabled = false)]
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class ParentContactLookupAppService : ApplicationService, IParentContactLookupAppService
 {
     private readonly IRepository<ParentContact, Guid> _parentContactRepository;

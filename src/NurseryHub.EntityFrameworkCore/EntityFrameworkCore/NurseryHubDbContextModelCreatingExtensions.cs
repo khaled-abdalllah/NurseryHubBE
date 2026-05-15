@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NurseryHub.Locations;
 using NurseryHub.Nurseries;
+using NurseryHub.Portal;
 using Volo.Abp;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
@@ -313,6 +314,11 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany()
                 .HasForeignKey(x => x.BranchId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.RelatedStudentId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<NotificationRecipient>(b =>
@@ -470,6 +476,22 @@ public static class NurseryHubDbContextModelCreatingExtensions
                 .WithMany()
                 .HasForeignKey(x => x.NurseryBranchId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PackageSubscriptionInquiry>(b =>
+        {
+            b.ToTable(NurseryHubConsts.DbTablePrefix + "PackageSubscriptionInquiries", NurseryHubConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.PackageTier).HasConversion<int>();
+            b.Property(x => x.NurseryName).IsRequired().HasMaxLength(PackageSubscriptionInquiryConsts.MaxNurseryNameLength);
+            b.Property(x => x.ContactName).IsRequired().HasMaxLength(PackageSubscriptionInquiryConsts.MaxContactNameLength);
+            b.Property(x => x.PhoneNumber).IsRequired().HasMaxLength(PackageSubscriptionInquiryConsts.MaxPhoneNumberLength);
+            b.Property(x => x.Email).IsRequired().HasMaxLength(PackageSubscriptionInquiryConsts.MaxEmailLength);
+            b.Property(x => x.Message).HasMaxLength(PackageSubscriptionInquiryConsts.MaxMessageLength);
+
+            b.HasIndex(x => x.CreationTime);
+            b.HasIndex(x => x.PackageTier);
         });
     }
 }

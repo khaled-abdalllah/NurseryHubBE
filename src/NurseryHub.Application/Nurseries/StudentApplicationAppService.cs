@@ -10,7 +10,8 @@ using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class StudentApplicationAppService : ApplicationService, IStudentApplicationAppService
 {
     private readonly IRepository<StudentApplication, Guid> _repository;

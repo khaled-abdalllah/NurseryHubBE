@@ -125,7 +125,8 @@ public class NurseryStatisticsAppService : ApplicationService, INurseryStatistic
             .ToList();
     }
 
-    [Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+    [Authorize(Roles =
+        $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
     public virtual async Task<NurseryClassBranchStatisticsDto> GetBranchClassStatisticsAsync(Guid nurseryBranchId)
     {
         if (nurseryBranchId == Guid.Empty)

@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using NurseryHub.Security;
-using Volo.Abp.Authorization;
 using Volo.Abp;
+using Volo.Abp.Authorization;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
@@ -26,6 +26,10 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
     private readonly IRepository<DailyFollowupActivityEntry, Guid> _activityRepository;
     private readonly IRepository<DailyFollowupMealEntry, Guid> _mealRepository;
     private readonly IRepository<Attendance, Guid> _attendanceRepository;
+    private readonly IRepository<Notification, Guid> _notificationRepository;
+    private readonly IRepository<NotificationRecipient, Guid> _notificationRecipientRepository;
+    private readonly IRepository<UserBranch, Guid> _userBranchRepository;
+    private readonly NotificationDeliveryService _notificationDeliveryService;
     private readonly ITenantRepository _tenantRepository;
     private readonly NurseryMediaOptions _mediaOptions;
 
@@ -39,6 +43,10 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         IRepository<DailyFollowupActivityEntry, Guid> activityRepository,
         IRepository<DailyFollowupMealEntry, Guid> mealRepository,
         IRepository<Attendance, Guid> attendanceRepository,
+        IRepository<Notification, Guid> notificationRepository,
+        IRepository<NotificationRecipient, Guid> notificationRecipientRepository,
+        IRepository<UserBranch, Guid> userBranchRepository,
+        NotificationDeliveryService notificationDeliveryService,
         ITenantRepository tenantRepository,
         IOptions<NurseryMediaOptions> mediaOptions)
     {
@@ -51,6 +59,10 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         _activityRepository = activityRepository;
         _mealRepository = mealRepository;
         _attendanceRepository = attendanceRepository;
+        _notificationRepository = notificationRepository;
+        _notificationRecipientRepository = notificationRecipientRepository;
+        _userBranchRepository = userBranchRepository;
+        _notificationDeliveryService = notificationDeliveryService;
         _tenantRepository = tenantRepository;
         _mediaOptions = mediaOptions.Value;
     }
@@ -235,6 +247,202 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
             Mood = report.OverallMood,
             TeacherNote = report.TeacherNote,
         };
+    }
+
+    public async Task<List<ParentPortalNotificationDto>> GetMyNotificationsAsync(int maxResultCount = 50)
+    {
+        var parentUserId = GetCurrentParentUserId();
+        if (maxResultCount < 1 || maxResultCount > 200)
+        {
+            maxResultCount = 50;
+        }
+
+        var recipientsQ = await _notificationRecipientRepository.GetQueryableAsync();
+        var notificationsQ = await _notificationRepository.GetQueryableAsync();
+
+        var query =
+            from r in recipientsQ
+            join n in notificationsQ on r.NotificationId equals n.Id
+            where r.ParentUserId == parentUserId
+                && n.AudienceType != NotificationAudienceType.ParentToNursery
+                && n.Status == NotificationStatus.Sent
+                && r.DeliveryStatus != NotificationDeliveryStatus.Pending
+            orderby n.SentDate descending, r.CreationTime descending
+            select new ParentPortalNotificationDto
+            {
+                RecipientId = r.Id,
+                NotificationId = n.Id,
+                Title = n.Title,
+                Message = n.Message,
+                NotificationType = n.NotificationType,
+                PriorityLevel = n.PriorityLevel,
+                SentDate = n.SentDate,
+                DeliveryStatus = r.DeliveryStatus,
+                ReadAt = r.ReadAt,
+            };
+
+        return await AsyncExecuter.ToListAsync(query.Take(maxResultCount));
+    }
+
+    public async Task<int> GetMyUnreadNotificationCountAsync()
+    {
+        var parentUserId = GetCurrentParentUserId();
+        var recipientsQ = await _notificationRecipientRepository.GetQueryableAsync();
+        var notificationsQ = await _notificationRepository.GetQueryableAsync();
+
+        var query =
+            from r in recipientsQ
+            join n in notificationsQ on r.NotificationId equals n.Id
+            where r.ParentUserId == parentUserId
+                && n.AudienceType != NotificationAudienceType.ParentToNursery
+                && n.Status == NotificationStatus.Sent
+                && r.DeliveryStatus != NotificationDeliveryStatus.Pending
+                && r.ReadAt == null
+                && r.DeliveryStatus != NotificationDeliveryStatus.Read
+            select r.Id;
+
+        return await AsyncExecuter.CountAsync(query);
+    }
+
+    [RemoteService(IsEnabled = false)]
+    public async Task MarkMyNotificationReadAsync(Guid recipientId)
+    {
+        var parentUserId = GetCurrentParentUserId();
+        var recipient = await _notificationRecipientRepository.GetAsync(recipientId);
+        if (recipient.ParentUserId != parentUserId)
+        {
+            throw new AbpAuthorizationException("Notification does not belong to the current parent.");
+        }
+
+        var notification = await _notificationRepository.GetAsync(recipient.NotificationId);
+        if (notification.AudienceType == NotificationAudienceType.ParentToNursery)
+        {
+            throw new AbpAuthorizationException("Notification is not part of the parent inbox.");
+        }
+
+        if (recipient.DeliveryStatus == NotificationDeliveryStatus.Read)
+        {
+            return;
+        }
+
+        recipient.MarkRead(Clock.Now);
+        await _notificationRecipientRepository.UpdateAsync(recipient);
+    }
+
+    [RemoteService(IsEnabled = false)]
+    public async Task SendNotificationToNurseryAsync(SendParentToNurseryNotificationDto input)
+    {
+        var title = input.Title?.Trim() ?? string.Empty;
+        var message = input.Message?.Trim() ?? string.Empty;
+        if (title.Length == 0 || message.Length == 0)
+        {
+            throw new UserFriendlyException(L["NurseryHub:ParentPortal:NotifyNursery:TitleMessageRequired"]);
+        }
+
+        if (title.Length > Notification.MaxTitleLength || message.Length > Notification.MaxMessageLength)
+        {
+            throw new UserFriendlyException(L["NurseryHub:ParentPortal:NotifyNursery:LengthInvalid"]);
+        }
+
+        var student = await EnsureParentCanAccessStudentAsync(input.StudentId);
+        var branchId = student.NurseryBranchId;
+        var parentUserId = GetCurrentParentUserId();
+
+        var staffUserIds = await GetStaffUserIdsForBranchAsync(branchId);
+        var notification = new Notification(
+            GuidGenerator.Create(),
+            CurrentTenant.Id,
+            title,
+            message,
+            NotificationType.ParentMessage,
+            PriorityLevel.Normal,
+            NotificationAudienceType.ParentToNursery,
+            parentUserId,
+            branchId);
+        notification.SetRelatedStudent(student.Id);
+
+        notification.MarkSending();
+        await _notificationRepository.InsertAsync(notification, autoSave: true);
+
+        var deliveredCount = await _notificationDeliveryService.CreateInAppDeliveriesAsync(
+            notification.Id,
+            notification.TenantId,
+            staffUserIds);
+
+        notification.MarkSent(deliveredCount, Clock.Now);
+        await _notificationRepository.UpdateAsync(notification);
+    }
+
+    public async Task<List<ParentPortalSentToNurseryNotificationDto>> GetMySentToNurseryNotificationsAsync(int maxResultCount = 50)
+    {
+        var parentUserId = GetCurrentParentUserId();
+        if (maxResultCount < 1 || maxResultCount > 200)
+        {
+            maxResultCount = 50;
+        }
+
+        var notificationsQ = await _notificationRepository.GetQueryableAsync();
+        var studentsQ = await _studentRepository.GetQueryableAsync();
+
+        var query =
+            from n in notificationsQ
+            join s in studentsQ on n.RelatedStudentId equals s.Id into studentJoin
+            from s in studentJoin.DefaultIfEmpty()
+            where n.SentByUserId == parentUserId
+                && n.AudienceType == NotificationAudienceType.ParentToNursery
+                && n.Status == NotificationStatus.Sent
+            orderby n.SentDate descending, n.CreationTime descending
+            select new ParentPortalSentToNurseryNotificationDto
+            {
+                NotificationId = n.Id,
+                Title = n.Title,
+                Message = n.Message,
+                SentDate = n.SentDate,
+                StudentName = s != null ? s.FullName : null,
+            };
+
+        return await AsyncExecuter.ToListAsync(query.Take(maxResultCount));
+    }
+
+    [RemoteService(IsEnabled = false)]
+    public async Task<ParentPortalSentToNurseryNotificationDto> GetMySentToNurseryNotificationAsync(Guid notificationId)
+    {
+        var parentUserId = GetCurrentParentUserId();
+        var n = await _notificationRepository.GetAsync(notificationId);
+        if (n.SentByUserId != parentUserId || n.AudienceType != NotificationAudienceType.ParentToNursery)
+        {
+            throw new AbpAuthorizationException("Notification is not part of the parent outbox.");
+        }
+
+        string? studentName = null;
+        if (n.RelatedStudentId.HasValue)
+        {
+            var student = await _studentRepository.FindAsync(n.RelatedStudentId.Value);
+            studentName = student?.FullName;
+        }
+
+        return new ParentPortalSentToNurseryNotificationDto
+        {
+            NotificationId = n.Id,
+            Title = n.Title,
+            Message = n.Message,
+            SentDate = n.SentDate,
+            StudentName = studentName,
+        };
+    }
+
+    private async Task<List<Guid>> GetStaffUserIdsForBranchAsync(Guid branchId)
+    {
+        if (!CurrentTenant.Id.HasValue)
+        {
+            return new List<Guid>();
+        }
+
+        var links = await _userBranchRepository.GetListAsync(x =>
+            x.TenantId == CurrentTenant.Id &&
+            x.NurseryBranchId == branchId);
+
+        return links.Select(x => x.UserId).Distinct().ToList();
     }
 
     private Guid GetCurrentParentUserId()

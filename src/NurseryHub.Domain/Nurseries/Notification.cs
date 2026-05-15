@@ -23,6 +23,8 @@ public class Notification : FullAuditedAggregateRoot<Guid>, IMultiTenant
     public NotificationStatus Status { get; private set; }
     public int TotalRecipients { get; private set; }
     public DateTime? SentDate { get; private set; }
+    /// <summary>Optional student context (e.g. parent message to nursery about this child).</summary>
+    public Guid? RelatedStudentId { get; private set; }
 
     protected Notification()
     {
@@ -70,5 +72,10 @@ public class Notification : FullAuditedAggregateRoot<Guid>, IMultiTenant
     public void MarkFailed()
     {
         Status = NotificationStatus.Failed;
+    }
+
+    public void SetRelatedStudent(Guid studentId)
+    {
+        RelatedStudentId = studentId;
     }
 }

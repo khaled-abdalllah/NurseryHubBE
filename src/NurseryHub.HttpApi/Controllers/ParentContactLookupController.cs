@@ -12,7 +12,8 @@ namespace NurseryHub.Controllers;
 /// </summary>
 [Area("app")]
 [Route("api/app/parent-contact-lookup")]
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class ParentContactLookupController : NurseryHubController
 {
     private readonly IParentContactLookupAppService _lookupAppService;
