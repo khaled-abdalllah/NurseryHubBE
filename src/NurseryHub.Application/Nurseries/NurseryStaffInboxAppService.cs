@@ -12,7 +12,7 @@ using Volo.Abp.Domain.Repositories;
 namespace NurseryHub.Nurseries;
 
 [Authorize(Roles =
-    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher},{NurseryHubRoles.Accountant}")]
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
 public class NurseryStaffInboxAppService : ApplicationService, INurseryStaffInboxAppService
 {
     private readonly IRepository<Notification, Guid> _notificationRepository;
@@ -32,12 +32,12 @@ public class NurseryStaffInboxAppService : ApplicationService, INurseryStaffInbo
         _studentRepository = studentRepository;
     }
 
-    public async Task<List<NurseryStaffInboxNotificationDto>> GetMyInboxNotificationsAsync(int maxResultCount = 50)
+    public async Task<List<NurseryStaffInboxNotificationDto>> GetMyInboxNotificationsAsync(int maxResultCount = NurseryHubPagingDefaults.PageSize)
     {
         var staffUserId = GetCurrentStaffUserId();
-        if (maxResultCount < 1 || maxResultCount > 200)
+        if (maxResultCount < 1 || maxResultCount > NurseryHubPagingDefaults.PageSize)
         {
-            maxResultCount = 50;
+            maxResultCount = NurseryHubPagingDefaults.PageSize;
         }
 
         var accessibleBranchIds = await GetAccessibleBranchIdsAsync();

@@ -21,7 +21,8 @@ public static class NurseryHubDbContextModelCreatingExtensions
             b.Property(x => x.Name).IsRequired().HasMaxLength(Nursery.MaxNameLength);
             b.Property(x => x.PhoneNumber).IsRequired().HasMaxLength(Nursery.MaxPhoneNumberLength);
             b.Property(x => x.Email).IsRequired().HasMaxLength(Nursery.MaxEmailLength);
-            b.Property(x => x.LogoUrl).HasMaxLength(Nursery.MaxLogoUrlLength);
+            b.Property(x => x.LogoData).HasColumnType("varbinary(max)");
+            b.Property(x => x.LogoContentType).HasMaxLength(Nursery.MaxLogoContentTypeLength);
             b.Property(x => x.WebsiteUrl).HasMaxLength(Nursery.MaxWebsiteUrlLength);
             b.Property(x => x.IsActive).HasDefaultValue(true);
 

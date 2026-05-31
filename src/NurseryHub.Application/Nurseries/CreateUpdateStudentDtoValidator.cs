@@ -28,9 +28,6 @@ public class CreateUpdateStudentDtoValidator : AbstractValidator<CreateUpdateStu
 
     private static readonly string[] AllowedGenders = ["Male", "Female"];
 
-    private static readonly string[] AllowedToiletTraining =
-        ["Independent", "Needs Assistance", "In Training"];
-
     private static readonly Regex NameRegex = new(ArabicEnglishNamePattern, RegexOptions.Compiled);
     private static readonly Regex NotesRegex = new(SafeNotesPattern, RegexOptions.Compiled);
     private static readonly Regex PhoneRegex = new(EgyptianPhonePattern, RegexOptions.Compiled);
@@ -157,7 +154,7 @@ public class CreateUpdateStudentDtoValidator : AbstractValidator<CreateUpdateStu
             .WithMessage("يحتوي الحقل على أحرف غير مسموحة");
 
         RuleFor(x => x.ToiletTrainingStatus)
-            .Must(v => string.IsNullOrWhiteSpace(v) || AllowedToiletTraining.Contains(v.Trim()))
+            .Must(StudentFieldNormalizer.IsAllowedToiletTraining)
             .WithMessage("قيمة غير صالحة");
 
         RuleFor(x => x)

@@ -5,6 +5,17 @@
       "args": [
         "mcp-studio"
       ]
+    },
+    "sqlserver": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@tugberkgunver/mcp-sqlserver",
+        "--config",
+        "../.cursor/mssql-mcp.yaml"
+      ]
     }
   }
 }

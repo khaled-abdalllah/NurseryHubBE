@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using NurseryHub;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -17,9 +18,9 @@ public interface IParentPortalAppService : IApplicationService
 
     Task<ParentStudentAttendanceDayDto> GetAttendanceAsync(GetParentStudentAttendanceInput input);
 
-    Task<List<ParentPortalNotificationDto>> GetMyNotificationsAsync(int maxResultCount = 50);
+    Task<List<ParentPortalNotificationDto>> GetMyNotificationsAsync(int maxResultCount = NurseryHubPagingDefaults.PageSize);
 
-    Task<List<ParentPortalSentToNurseryNotificationDto>> GetMySentToNurseryNotificationsAsync(int maxResultCount = 50);
+    Task<List<ParentPortalSentToNurseryNotificationDto>> GetMySentToNurseryNotificationsAsync(int maxResultCount = NurseryHubPagingDefaults.PageSize);
 
     /// <summary>HTTP route: use <c>ParentPortalNotificationsController</c> (GET .../my-sent-to-nursery/{notificationId}).</summary>
     [RemoteService(IsEnabled = false)]

@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using NurseryHub.Security;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Content;
 using Volo.Abp.Data;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using Volo.Abp.MultiTenancy;
@@ -61,7 +63,6 @@ public class NurseryAppService
                 input.Name,
                 input.PhoneNumber,
                 input.Email,
-                logoUrl: null,
                 input.WebsiteUrl,
                 input.IsActive)
         {
@@ -75,31 +76,44 @@ public class NurseryAppService
         return dto;
     }
 
-
     public virtual async Task<NurseryDto> UploadLogoAsync(Guid id, UploadNurseryLogoInput input)
     {
         var entity = await GetEntityByIdAsync(id);
         var file = input.File;
 
-        var ext = Path.GetExtension(file.FileName)!.ToLowerInvariant();
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream);
+        var logoData = stream.ToArray();
 
-        var directory = _mediaOptions.LogoPhysicalPath;
-        Directory.CreateDirectory(directory);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? ResolveContentTypeFromFileName(file.FileName)
+            : file.ContentType;
 
-        DeleteStoredLogoFileIfExists(entity.LogoUrl);
-
-        var fileName = $"{GuidGenerator.Create()}{ext}";
-        var physicalPath = Path.Combine(directory, fileName);
-
-        await using (var stream = File.Create(physicalPath))
-        {
-            await file.CopyToAsync(stream);
-        }
-
-        entity.SetLogoUrl(fileName);
+        entity.SetLogo(logoData, contentType);
         await Repository.UpdateAsync(entity);
 
         return MapToGetOutputDto(entity);
+    }
+
+    [AllowAnonymous]
+    public virtual async Task<IRemoteStreamContent> GetLogoAsync(Guid id)
+    {
+        Nursery entity;
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            entity = await Repository.FindAsync(id)
+                ?? throw new EntityNotFoundException(typeof(Nursery), id);
+        }
+
+        if (!entity.HasLogo)
+        {
+            throw new EntityNotFoundException(typeof(Nursery), id);
+        }
+
+        return new RemoteStreamContent(
+            new MemoryStream(entity.LogoData!),
+            contentType: entity.LogoContentType ?? "application/octet-stream",
+            disposeStream: true);
     }
 
     public override async Task<PagedResultDto<NurseryDto>> GetListAsync(GetNurseriesInput input)
@@ -148,7 +162,7 @@ public class NurseryAppService
                     nursery.Name,
                     nursery.PhoneNumber,
                     nursery.Email,
-                    nursery.LogoUrl,
+                    HasLogo = nursery.LogoData != null && nursery.LogoData.Length > 0,
                     nursery.WebsiteUrl,
                     nursery.IsActive,
                     BranchCount = branches.Count(b => b.NurseryId == nursery.Id),
@@ -188,7 +202,7 @@ public class NurseryAppService
                     : null,
                 PhoneNumber = x.PhoneNumber,
                 Email = x.Email,
-                LogoUrl = ResolveLogoDisplayUrl(x.LogoUrl),
+                LogoUrl = NurseryLogoUrlHelper.BuildLogoUrl(_mediaOptions.PublicBaseUrl, x.Id, x.HasLogo),
                 WebsiteUrl = x.WebsiteUrl,
                 IsActive = x.IsActive,
                 BranchCount = x.BranchCount,
@@ -253,7 +267,6 @@ public class NurseryAppService
                 createInput.Name,
                 createInput.PhoneNumber,
                 createInput.Email,
-                logoUrl: null,
                 createInput.WebsiteUrl,
                 createInput.IsActive)
             {
@@ -280,7 +293,7 @@ public class NurseryAppService
             NurseryCode = null,
             PhoneNumber = entity.PhoneNumber,
             Email = entity.Email,
-            LogoUrl = ResolveLogoDisplayUrl(entity.LogoUrl),
+            LogoUrl = NurseryLogoUrlHelper.BuildLogoUrl(_mediaOptions.PublicBaseUrl, entity.Id, entity.HasLogo),
             WebsiteUrl = entity.WebsiteUrl,
             IsActive = entity.IsActive,
             BranchCount = 0,
@@ -300,53 +313,24 @@ public class NurseryAppService
         return query.OrderBy(n => n.Name);
     }
 
-    private string? ResolveLogoDisplayUrl(string? stored)
+    private static string ResolveContentTypeFromFileName(string fileName)
     {
-        if (string.IsNullOrWhiteSpace(stored))
+        var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+        return ext switch
         {
-            return null;
-        }
-
-        if (stored.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            stored.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            return stored;
-        }
-
-        var baseUrl = _mediaOptions.PublicBaseUrl.TrimEnd('/');
-        var fileName = stored.Replace('\\', '/').TrimStart('/');
-        if (fileName.Contains('/', StringComparison.Ordinal))
-        {
-            return $"{baseUrl}/{fileName}";
-        }
-
-        return $"{baseUrl}/logo/{fileName}";
-    }
-
-    private void DeleteStoredLogoFileIfExists(string? stored)
-    {
-        if (string.IsNullOrWhiteSpace(stored))
-        {
-            return;
-        }
-
-        if (stored.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            stored.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        var name = Path.GetFileName(stored.Replace('/', Path.DirectorySeparatorChar));
-        if (string.IsNullOrEmpty(name))
-        {
-            return;
-        }
-
-        var path = Path.Combine(_mediaOptions.LogoPhysicalPath, name);
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-        }
+            ".jpg" or ".jpeg" or ".jfif" or ".jpe" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            ".tif" or ".tiff" => "image/tiff",
+            ".svg" => "image/svg+xml",
+            ".ico" => "image/x-icon",
+            ".avif" => "image/avif",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            _ => "application/octet-stream",
+        };
     }
 
     private async Task<Tenant> CreateTenantForNurseryAsync(string? requestedNurseryCode)

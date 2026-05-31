@@ -16,7 +16,7 @@ using Volo.Abp.MultiTenancy;
 namespace NurseryHub.Nurseries;
 
 [Authorize(Roles =
-    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher}")]
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Teacher},{NurseryHubRoles.Accountant}")]
 public class NurseryClassAppService
     : CrudAppService<
             NurseryClass,

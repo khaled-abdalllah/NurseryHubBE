@@ -10,14 +10,15 @@ public class Nursery : FullAuditedAggregateRoot<Guid>, IMultiTenant
     public const int MaxNameLength = 128;
     public const int MaxPhoneNumberLength = 32;
     public const int MaxEmailLength = 256;
-    public const int MaxLogoUrlLength = 1024;
+    public const int MaxLogoContentTypeLength = 128;
     public const int MaxWebsiteUrlLength = 1024;
 
     public Guid? TenantId { get; private set; }
     public string Name { get; private set; } = null!;
     public string PhoneNumber { get; private set; } = null!;
     public string Email { get; private set; } = null!;
-    public string? LogoUrl { get; private set; }
+    public byte[]? LogoData { get; private set; }
+    public string? LogoContentType { get; private set; }
     public string? WebsiteUrl { get; private set; }
     public bool IsActive { get; private set; }
 
@@ -34,7 +35,6 @@ public class Nursery : FullAuditedAggregateRoot<Guid>, IMultiTenant
         string name,
         string phoneNumber,
         string email,
-        string? logoUrl = null,
         string? websiteUrl = null,
         bool isActive = true) : base(id)
     {
@@ -42,7 +42,6 @@ public class Nursery : FullAuditedAggregateRoot<Guid>, IMultiTenant
         SetName(name);
         SetPhoneNumber(phoneNumber);
         SetEmail(email);
-        SetLogoUrl(logoUrl);
         SetWebsiteUrl(websiteUrl);
         IsActive = isActive;
     }
@@ -62,10 +61,25 @@ public class Nursery : FullAuditedAggregateRoot<Guid>, IMultiTenant
         Email = Check.NotNullOrWhiteSpace(email, nameof(email), MaxEmailLength);
     }
 
-    public void SetLogoUrl(string? logoUrl)
+    public void SetLogo(byte[] logoData, string contentType)
     {
-        LogoUrl = Check.Length(logoUrl, nameof(logoUrl), MaxLogoUrlLength);
+        Check.NotNull(logoData, nameof(logoData));
+        if (logoData.Length == 0)
+        {
+            throw new ArgumentException("Logo data must not be empty.", nameof(logoData));
+        }
+
+        LogoData = logoData;
+        LogoContentType = Check.NotNullOrWhiteSpace(contentType, nameof(contentType), MaxLogoContentTypeLength);
     }
+
+    public void ClearLogo()
+    {
+        LogoData = null;
+        LogoContentType = null;
+    }
+
+    public bool HasLogo => LogoData is { Length: > 0 };
 
     public void SetWebsiteUrl(string? websiteUrl)
     {

@@ -220,7 +220,8 @@ public class NurseryBranchAppService
                     Id = branch.Id,
                     Name = branch.Name,
                     NurseryName = nursery.Name,
-                    NurseryLogoUrlStored = nursery.LogoUrl,
+                    NurseryId = nursery.Id,
+                    HasLogo = nursery.LogoData != null && nursery.LogoData.Length > 0,
                 };
 
             var rows = await AsyncExecuter.ToListAsync(
@@ -231,34 +232,14 @@ public class NurseryBranchAppService
                     Id = x.Id,
                     Name = x.Name,
                     NurseryName = x.NurseryName,
-                    NurseryLogoUrl = ResolveLogoDisplayUrl(x.NurseryLogoUrlStored),
+                    NurseryLogoUrl = NurseryLogoUrlHelper.BuildLogoUrl(
+                        _mediaOptions.PublicBaseUrl,
+                        x.NurseryId,
+                        x.HasLogo),
                 })
                 .ToList();
 
             return new ListResultDto<ManagedBranchLookupDto>(items);
-    }
-
-    private string? ResolveLogoDisplayUrl(string? stored)
-    {
-        if (string.IsNullOrWhiteSpace(stored))
-        {
-            return null;
-        }
-
-        if (stored.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase) ||
-            stored.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase))
-        {
-            return stored;
-        }
-
-        var baseUrl = _mediaOptions.PublicBaseUrl.TrimEnd('/');
-        var fileName = stored.Replace('\\', '/').TrimStart('/');
-        if (fileName.Contains('/', System.StringComparison.Ordinal))
-        {
-            return $"{baseUrl}/{fileName}";
-        }
-
-        return $"{baseUrl}/logo/{fileName}";
     }
 
     public override async Task<NurseryBranchDto> UpdateAsync(Guid id, CreateUpdateNurseryBranchDto input)

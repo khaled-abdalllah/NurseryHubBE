@@ -249,12 +249,12 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         };
     }
 
-    public async Task<List<ParentPortalNotificationDto>> GetMyNotificationsAsync(int maxResultCount = 50)
+    public async Task<List<ParentPortalNotificationDto>> GetMyNotificationsAsync(int maxResultCount = NurseryHubPagingDefaults.PageSize)
     {
         var parentUserId = GetCurrentParentUserId();
-        if (maxResultCount < 1 || maxResultCount > 200)
+        if (maxResultCount < 1 || maxResultCount > NurseryHubPagingDefaults.PageSize)
         {
-            maxResultCount = 50;
+            maxResultCount = NurseryHubPagingDefaults.PageSize;
         }
 
         var recipientsQ = await _notificationRecipientRepository.GetQueryableAsync();
@@ -373,12 +373,12 @@ public class ParentPortalAppService : ApplicationService, IParentPortalAppServic
         await _notificationRepository.UpdateAsync(notification);
     }
 
-    public async Task<List<ParentPortalSentToNurseryNotificationDto>> GetMySentToNurseryNotificationsAsync(int maxResultCount = 50)
+    public async Task<List<ParentPortalSentToNurseryNotificationDto>> GetMySentToNurseryNotificationsAsync(int maxResultCount = NurseryHubPagingDefaults.PageSize)
     {
         var parentUserId = GetCurrentParentUserId();
-        if (maxResultCount < 1 || maxResultCount > 200)
+        if (maxResultCount < 1 || maxResultCount > NurseryHubPagingDefaults.PageSize)
         {
-            maxResultCount = 50;
+            maxResultCount = NurseryHubPagingDefaults.PageSize;
         }
 
         var notificationsQ = await _notificationRepository.GetQueryableAsync();

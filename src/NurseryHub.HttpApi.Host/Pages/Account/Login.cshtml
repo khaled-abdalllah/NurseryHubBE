@@ -9,16 +9,18 @@
 @using Volo.Abp.Identity
 @using Volo.Abp.Settings
 @using Microsoft.Extensions.Localization
-@model LoginModel
+@using NurseryHub.Pages.Account
+@using Volo.Abp.AspNetCore.Mvc.UI.Alerts
+@model NurseryHubLoginModel
 @inject IHtmlLocalizer<AccountResource> L
 @inject IStringLocalizer<NurseryHubResource> NhL
 @inject ISettingProvider SettingProvider
+@inject IAlertManager AlertManager
 @{
     Layout = "~/Themes/LeptonXLite/Layouts/NurseryHubLoginLayout.cshtml";
     ViewData["Title"] = L["Login"].ToString();
     var ui = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
     var currentReturnUrl = WebUtility.UrlEncode(Request.GetEncodedPathAndQuery());
-    var nurseryName = Request.Query["__tenant"].ToString();
     string LoginLangUrl(string culture) =>
         Url.Content($"~/Abp/Languages/Switch?culture={culture}&uiCulture={culture}&returnUrl={currentReturnUrl}")!;
 }
@@ -31,7 +33,7 @@
 
 @section scripts
 {
-    <abp-script-bundle name="@typeof(LoginModel).FullName">
+    <abp-script-bundle name="@typeof(NurseryHubLoginModel).FullName">
         <abp-script src="/account-login-toggle.js" />
     </abp-script-bundle>
 }
@@ -59,29 +61,37 @@
                     </div>
                 }
 
-
+                @foreach (var alert in AlertManager.Alerts)
+                {
+                    var alertClass = alert.Type == AlertType.Default
+                        ? "alert-secondary"
+                        : $"alert-{alert.Type.ToString().ToLowerInvariant()}";
+                    <div class="alert @alertClass nh-login-alert @(alert.Dismissible ? "alert-dismissible fade show" : null)"
+                         role="alert">
+                        @if (alert.Title != null)
+                        {
+                            <h4 class="alert-heading">@alert.Title</h4>
+                        }
+                        <p class="mb-0">@alert.Text</p>
+                        @if (alert.Dismissible)
+                        {
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        }
+                    </div>
+                }
 
                 @if (Model.EnableLocalLogin)
                 {
                     <form method="post" id="LoginForm">
-                        <div class="nh-login-field">
-                            <label for="NurseryCodeInput" class="nh-login-label">@NhL["LoginPage:NurseryCodeLabel"]</label>
-                            <div class="nh-login-input-wrap">
-                                <span class="material-symbols-outlined nh-login-input-icon" aria-hidden="true">apartment</span>
-                                <input id="NurseryCodeInput"
-                                       name="__tenant"
-                                       class="form-control"
-                                       value="@nurseryName"
-                                       autocomplete="organization"
-                                       placeholder="@NhL["LoginPage:NurseryCodePlaceholder"]" />
-                            </div>
-                        </div>
-
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger nh-login-alert" role="alert"></div>
                         <div class="nh-login-field">
                             <label asp-for="LoginInput.UserNameOrEmailAddress" class="nh-login-label"></label>
                             <div class="nh-login-input-wrap">
                                 <span class="material-symbols-outlined nh-login-input-icon" aria-hidden="true">mail</span>
-                                <input asp-for="LoginInput.UserNameOrEmailAddress" class="form-control" autocomplete="username" />
+                                <input asp-for="LoginInput.UserNameOrEmailAddress"
+                                       class="form-control"
+                                       autocomplete="username"
+                                       placeholder="@NhL["LoginPage:UserNameOrEmailPlaceholder"]" />
                             </div>
                             <span asp-validation-for="LoginInput.UserNameOrEmailAddress" class="text-danger small d-block mt-1"></span>
                         </div>
@@ -94,6 +104,7 @@
                                        class="form-control"
                                        autocomplete="current-password"
                                        maxlength="@IdentityUserConsts.MaxPasswordLength"
+                                       placeholder="@NhL["LoginPage:PasswordPlaceholder"]"
                                        asp-for="LoginInput.Password" />
                                 <button class="btn btn-link p-0"
                                         type="button"
@@ -112,25 +123,18 @@
                                 <input asp-for="LoginInput.RememberMe" />
                                 <span>@L["RememberMe"]</span>
                             </label>
-                            <a class="nh-login-forgot"
-                               href="@Url.Page("./ForgotPassword", new { returnUrl = Model.ReturnUrl, returnUrlHash = Model.ReturnUrlHash })">@L["ForgotPassword"]</a>
                         </div>
 
-                        <button type="submit" class="nh-login-submit" name="Action" value="Login">
-                            <span class="material-symbols-outlined" aria-hidden="true">login</span>
-                            @L["Login"]
-                        </button>
-
-                        @if (Model.ShowCancelButton)
-                        {
-                            <button type="submit"
-                                    class="btn btn-outline-secondary w-100 mt-3 rounded-3 py-3 fw-semibold"
-                                    formnovalidate="formnovalidate"
-                                    name="Action"
-                                    value="Cancel">
-                                @L["Cancel"]
+                        <div class="nh-login-actions">
+                            <button type="submit" class="nh-login-submit" name="Action" value="Login">
+                                <span class="material-symbols-outlined" aria-hidden="true">login</span>
+                                @L["Login"]
                             </button>
-                        }
+                            <a href="@Model.HomePageUrl" class="nh-login-cancel">
+                                <span class="material-symbols-outlined" aria-hidden="true">home</span>
+                                @NhL["LoginPage:BackToHome"]
+                            </a>
+                        </div>
                     </form>
                 }
 

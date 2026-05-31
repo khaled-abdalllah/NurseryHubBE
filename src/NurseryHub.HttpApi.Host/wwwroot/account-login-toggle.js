@@ -2,47 +2,33 @@
 (function () {
   var bindToggle = function () {
     var button = document.getElementById("PasswordVisibilityButton");
-    if (button) {
-      var wrap = button.closest(".nh-login-password-wrap");
-      if (wrap) {
-        var input = wrap.querySelector("input.form-control");
-        if (input) {
-          var icon = button.querySelector(".nh-login-visibility-icon");
-          var showLabel = button.getAttribute("data-show-label") || "Show password";
-          var hideLabel = button.getAttribute("data-hide-label") || "Hide password";
-
-          button.addEventListener("click", function () {
-            var isPassword = input.getAttribute("type") === "password";
-            input.setAttribute("type", isPassword ? "text" : "password");
-
-            if (icon) {
-              icon.textContent = isPassword ? "visibility" : "visibility_off";
-            }
-
-            button.setAttribute("aria-label", isPassword ? hideLabel : showLabel);
-          });
-        }
-      }
-    }
-
-    var loginForm = document.getElementById("LoginForm");
-    var nurseryInput = document.getElementById("NurseryCodeInput");
-    if (!loginForm || !nurseryInput) {
+    if (!button) {
       return;
     }
 
-    loginForm.addEventListener("submit", function () {
-      var tenantValue = (nurseryInput.value || "").trim();
-      var action = loginForm.getAttribute("action") || window.location.pathname + window.location.search;
-      var actionUrl = new URL(action, window.location.origin);
+    var wrap = button.closest(".nh-login-password-wrap");
+    if (!wrap) {
+      return;
+    }
 
-      if (tenantValue) {
-        actionUrl.searchParams.set("__tenant", tenantValue);
-      } else {
-        actionUrl.searchParams.delete("__tenant");
+    var input = wrap.querySelector("input.form-control");
+    if (!input) {
+      return;
+    }
+
+    var icon = button.querySelector(".nh-login-visibility-icon");
+    var showLabel = button.getAttribute("data-show-label") || "Show password";
+    var hideLabel = button.getAttribute("data-hide-label") || "Hide password";
+
+    button.addEventListener("click", function () {
+      var isPassword = input.getAttribute("type") === "password";
+      input.setAttribute("type", isPassword ? "text" : "password");
+
+      if (icon) {
+        icon.textContent = isPassword ? "visibility" : "visibility_off";
       }
 
-      loginForm.setAttribute("action", actionUrl.pathname + actionUrl.search);
+      button.setAttribute("aria-label", isPassword ? hideLabel : showLabel);
     });
   };
 

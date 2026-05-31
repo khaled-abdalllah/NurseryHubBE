@@ -7,12 +7,15 @@ using NurseryHub.Security;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
+using Volo.Abp.Users;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager}")]
 public class EmployeeAppService : ApplicationService, IEmployeeAppService
 {
     private const string DefaultEmployeePassword = "Aa@12345678";
@@ -103,6 +106,15 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
             .WhereIf(!input.EmployeeName.IsNullOrWhiteSpace(), x => x.FullName.Contains(input.EmployeeName!))
             .WhereIf(!input.Email.IsNullOrWhiteSpace(), x => x.Email.Contains(input.Email!));
 
+        var scopedBranchIds = await GetScopedBranchIdsForCurrentUserAsync();
+        if (scopedBranchIds != null)
+        {
+            filtered = filtered.Where(x =>
+                x.BranchIds.Count > 0 &&
+                x.BranchIds.All(id => scopedBranchIds.Contains(id)) &&
+                x.Role != EmployeeRole.BranchManager);
+        }
+
         var totalCount = filtered.Count();
         var items = ApplySorting(filtered, input.Sorting)
             .Skip(input.SkipCount)
@@ -118,6 +130,8 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
         EnsureTenant(user.TenantId);
 
         var (branchIds, branchNames) = await GetAssignedBranchesAsync(id);
+        await EnsureCanManageEmployeeBranchesAsync(branchIds);
+        await EnsureCanManageEmployeeUserAsync(user);
         var role = await ResolveRoleAsync(user);
         return new EmployeeDetailsDto
         {
@@ -168,6 +182,10 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
         var user = await _identityUserRepository.GetAsync(id);
         EnsureTenant(user.TenantId);
 
+        var (existingBranchIds, _) = await GetAssignedBranchesAsync(id);
+        await EnsureCanManageEmployeeBranchesAsync(existingBranchIds);
+        await EnsureCanManageEmployeeUserAsync(user);
+
         var (name, surname) = SplitName(input.FullName);
         user.Name = name;
         user.Surname = surname;
@@ -202,6 +220,10 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
         var user = await _identityUserRepository.GetAsync(id);
         EnsureTenant(user.TenantId);
 
+        var (branchIds, _) = await GetAssignedBranchesAsync(id);
+        await EnsureCanManageEmployeeBranchesAsync(branchIds);
+        await EnsureCanManageEmployeeUserAsync(user);
+
         var userBranchLinks = await _userBranchRepository.GetListAsync(x => x.UserId == id);
         if (userBranchLinks.Count > 0)
         {
@@ -215,6 +237,11 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
     {
         var user = await _identityUserRepository.GetAsync(id);
         EnsureTenant(user.TenantId);
+
+        var (branchIds, _) = await GetAssignedBranchesAsync(id);
+        await EnsureCanManageEmployeeBranchesAsync(branchIds);
+        await EnsureCanManageEmployeeUserAsync(user);
+
         user.SetIsActive(input.IsActive);
         var updateResult = await _identityUserManager.UpdateAsync(user);
         ThrowIfFailed(updateResult);
@@ -261,6 +288,9 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
                 throw new UserFriendlyException(L["NurseryHub:Employees:InvalidBranch"]);
             }
         }
+
+        await EnsureCanManageEmployeeBranchesAsync(ids);
+        EnsureCurrentUserCanAssignRole(input.Role);
 
         var normalizedEmail = input.Email.Trim().ToUpperInvariant();
         var existing = await _identityUserRepository.FindByNormalizedEmailAsync(normalizedEmail);
@@ -321,6 +351,11 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
             return EmployeeRole.Accountant;
         }
 
+        if (roles.Contains(NurseryHubRoles.BranchManager))
+        {
+            return EmployeeRole.BranchManager;
+        }
+
         return EmployeeRole.Teacher;
     }
 
@@ -353,7 +388,8 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
     private static bool IsEmployeeRoleName(string roleName)
     {
         return roleName.Equals(NurseryHubRoles.Teacher, StringComparison.OrdinalIgnoreCase) ||
-               roleName.Equals(NurseryHubRoles.Accountant, StringComparison.OrdinalIgnoreCase);
+               roleName.Equals(NurseryHubRoles.Accountant, StringComparison.OrdinalIgnoreCase) ||
+               roleName.Equals(NurseryHubRoles.BranchManager, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildUserNameFromEmail(string email)
@@ -411,8 +447,84 @@ public class EmployeeAppService : ApplicationService, IEmployeeAppService
         {
             EmployeeRole.Teacher => NurseryHubRoles.Teacher,
             EmployeeRole.Accountant => NurseryHubRoles.Accountant,
+            EmployeeRole.BranchManager => NurseryHubRoles.BranchManager,
             _ => NurseryHubRoles.Teacher,
         };
+    }
+
+    private static bool UserIsInAnyRole(ICurrentUser user, params string[] roles)
+    {
+        var userRoles = user.Roles;
+        if (userRoles == null || !userRoles.Any())
+        {
+            return false;
+        }
+
+        return roles.Any(
+            r => userRoles.Any(ur => string.Equals(ur, r, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private bool CurrentUserIsBranchManagerOnly()
+    {
+        return UserIsInAnyRole(CurrentUser, NurseryHubRoles.BranchManager) &&
+               !UserIsInAnyRole(CurrentUser, NurseryHubRoles.Admin, NurseryHubRoles.NurseryAdmin);
+    }
+
+    private async Task<HashSet<Guid>?> GetScopedBranchIdsForCurrentUserAsync()
+    {
+        if (!CurrentUserIsBranchManagerOnly() || !CurrentUser.Id.HasValue || !CurrentTenant.Id.HasValue)
+        {
+            return null;
+        }
+
+        var userBranches = await _userBranchRepository.GetListAsync(x =>
+            x.TenantId == CurrentTenant.Id &&
+            x.UserId == CurrentUser.Id.Value);
+
+        return userBranches.Select(x => x.NurseryBranchId).Distinct().ToHashSet();
+    }
+
+    private async Task EnsureCanManageEmployeeBranchesAsync(IReadOnlyCollection<Guid> branchIds)
+    {
+        var scopedBranchIds = await GetScopedBranchIdsForCurrentUserAsync();
+        if (scopedBranchIds == null)
+        {
+            return;
+        }
+
+        if (branchIds.Count == 0 || branchIds.Any(id => !scopedBranchIds.Contains(id)))
+        {
+            throw new AbpAuthorizationException();
+        }
+    }
+
+    private async Task EnsureCanManageEmployeeUserAsync(IdentityUser user)
+    {
+        if (!CurrentUserIsBranchManagerOnly())
+        {
+            return;
+        }
+
+        var role = await ResolveRoleAsync(user);
+        if (role == EmployeeRole.BranchManager)
+        {
+            throw new AbpAuthorizationException();
+        }
+    }
+
+    private void EnsureCurrentUserCanAssignRole(EmployeeRole role)
+    {
+        if (role != EmployeeRole.BranchManager)
+        {
+            return;
+        }
+
+        if (UserIsInAnyRole(CurrentUser, NurseryHubRoles.Admin, NurseryHubRoles.NurseryAdmin))
+        {
+            return;
+        }
+
+        throw new UserFriendlyException(L["NurseryHub:Employees:CannotAssignBranchManagerRole"]);
     }
 
     private void EnsureTenant(Guid? tenantId)

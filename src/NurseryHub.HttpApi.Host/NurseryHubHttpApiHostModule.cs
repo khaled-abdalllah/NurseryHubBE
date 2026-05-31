@@ -26,6 +26,7 @@ using Volo.Abp.Studio;
 using Volo.Abp.Account;
 using Volo.Abp.Account.Web;
 using Volo.Abp.AspNetCore.MultiTenancy;
+using Volo.Abp.MultiTenancy;
 using Volo.Abp.Autofac;
 using Volo.Abp.Localization;
 using Volo.Abp.Modularity;
@@ -42,6 +43,7 @@ using Volo.Abp.OpenIddict;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.Studio.Client.AspNetCore;
 using Volo.Abp.Security.Claims;
+using Volo.Abp.Application.Dtos;
 
 namespace NurseryHub;
 
@@ -129,12 +131,23 @@ public class NurseryHubHttpApiHostModule : AbpModule
             options.ConventionalControllers.FormBodyBindingIgnoredTypes.Add(typeof(UploadStudentImageInput));
         });
         ConfigureUrls(configuration);
+        ConfigurePaging();
         ConfigureBundles(hostingEnvironment);
         ConfigureConventionalControllers();
         ConfigureHealthChecks(context);
         ConfigureSwagger(context, configuration);
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
+        ConfigureTenantResolver(context);
+    }
+
+    private static void ConfigureTenantResolver(ServiceConfigurationContext context)
+    {
+        context.Services.Configure<AbpTenantResolveOptions>(options =>
+        {
+            options.TenantResolvers.Clear();
+            options.TenantResolvers.Add(new CurrentUserTenantResolveContributor());
+        });
     }
 
     private void ConfigureStudio(IHostEnvironment hostingEnvironment)
@@ -155,6 +168,11 @@ public class NurseryHubHttpApiHostModule : AbpModule
         {
             options.IsDynamicClaimsEnabled = true;
         });
+    }
+
+    private static void ConfigurePaging()
+    {
+        LimitedResultRequestDto.DefaultMaxResultCount = NurseryHubPagingDefaults.PageSize;
     }
 
     private void ConfigureUrls(IConfiguration configuration)
@@ -335,8 +353,18 @@ public class NurseryHubHttpApiHostModule : AbpModule
     private static void ConfigureTenantMediaStaticFiles(IApplicationBuilder app, ApplicationInitializationContext context)
     {
         var mediaOptions = context.ServiceProvider.GetRequiredService<IOptions<NurseryMediaOptions>>().Value;
-        var mediaRoot = mediaOptions.MediaRootPath;
+        var mediaRoot = mediaOptions.MediaRootPath?.Trim();
         if (string.IsNullOrWhiteSpace(mediaRoot))
+        {
+            return;
+        }
+
+        if (!Path.IsPathFullyQualified(mediaRoot))
+        {
+            mediaRoot = Path.GetFullPath(mediaRoot);
+        }
+
+        if (!Path.IsPathFullyQualified(mediaRoot))
         {
             return;
         }

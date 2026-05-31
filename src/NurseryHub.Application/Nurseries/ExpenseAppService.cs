@@ -11,7 +11,8 @@ using Volo.Abp.Domain.Repositories;
 
 namespace NurseryHub.Nurseries;
 
-[Authorize(Roles = $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.Accountant}")]
+[Authorize(Roles =
+    $"{NurseryHubRoles.Admin},{NurseryHubRoles.NurseryAdmin},{NurseryHubRoles.BranchManager},{NurseryHubRoles.Accountant}")]
 public class ExpenseAppService : ApplicationService, IExpenseAppService
 {
     private readonly IRepository<Expense, Guid> _expenseRepository;

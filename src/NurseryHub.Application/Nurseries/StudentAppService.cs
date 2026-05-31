@@ -82,6 +82,11 @@ public class StudentAppService
         filtered = filtered
             .WhereIf(input.NurseryBranchId.HasValue, x => x.Student.NurseryBranchId == input.NurseryBranchId)
             .WhereIf(input.NurseryClassId.HasValue, x => x.Student.NurseryClassId == input.NurseryClassId)
+            .WhereIf(input.IsActive.HasValue, x => x.Student.IsActive == input.IsActive!.Value)
+            .WhereIf(input.WithoutNurseryClass == true, x => x.Student.NurseryClassId == null)
+            .WhereIf(!input.Religion.IsNullOrWhiteSpace(), x => x.Student.Religion == input.Religion)
+            .WhereIf(input.EnrollmentDateFrom.HasValue, x => x.Student.EnrollmentDate >= input.EnrollmentDateFrom!.Value)
+            .WhereIf(input.EnrollmentDateTo.HasValue, x => x.Student.EnrollmentDate <= input.EnrollmentDateTo!.Value)
             .WhereIf(
                 !input.Filter.IsNullOrWhiteSpace(),
                 x =>
@@ -95,6 +100,8 @@ public class StudentAppService
             from row in filtered
             join nurseryClass in classes on row.Student.NurseryClassId equals nurseryClass.Id into classJoin
             from nurseryClass in classJoin.DefaultIfEmpty()
+            where !input.GradeCategoryId.HasValue
+                  || (nurseryClass != null && nurseryClass.GradeCategoryId == input.GradeCategoryId)
             let student = row.Student
             let parent = row.Parent
             select new
@@ -262,6 +269,27 @@ public class StudentAppService
     public override async Task<StudentDto> GetAsync(Guid id)
     {
         var entity = await Repository.GetAsync(id);
+        var parent = await _parentContactRepository.GetAsync(entity.ParentId);
+        var nurseryClass = entity.NurseryClassId.HasValue
+            ? await _nurseryClassRepository.FindAsync(entity.NurseryClassId.Value)
+            : null;
+
+        var dto = await BuildStudentDtoAsync(entity, parent);
+        dto.NurseryClassName = nurseryClass?.Name;
+        dto.ProfileImageUrl = ResolveStudentImageDisplayUrl(dto.ProfileImageFileName, CurrentTenant.Name);
+        return dto;
+    }
+
+    public virtual async Task<StudentDto> AssignClassAsync(Guid id, AssignStudentClassDto input)
+    {
+        await CheckUpdatePolicyAsync();
+        var entity = await GetEntityByIdAsync(id);
+        EnsureStudentIsActive(entity);
+
+        await ValidateReferencesAsync(entity.NurseryBranchId, input.NurseryClassId);
+        entity.SetClass(input.NurseryClassId);
+        await Repository.UpdateAsync(entity, autoSave: true);
+
         var parent = await _parentContactRepository.GetAsync(entity.ParentId);
         var nurseryClass = entity.NurseryClassId.HasValue
             ? await _nurseryClassRepository.FindAsync(entity.NurseryClassId.Value)
@@ -709,7 +737,7 @@ public class StudentAppService
         input.EmergencyContactNumber = input.EmergencyContactNumber.Trim();
         input.HealthNotes = NullIfWhiteSpace(input.HealthNotes);
         input.DietaryRestrictions = NullIfWhiteSpace(input.DietaryRestrictions);
-        input.ToiletTrainingStatus = NullIfWhiteSpace(input.ToiletTrainingStatus);
+        input.ToiletTrainingStatus = StudentFieldNormalizer.NormalizeToiletTraining(input.ToiletTrainingStatus);
         input.MedicalNotes = NullIfWhiteSpace(input.MedicalNotes);
         input.AllergyNotes = NullIfWhiteSpace(input.AllergyNotes);
     }

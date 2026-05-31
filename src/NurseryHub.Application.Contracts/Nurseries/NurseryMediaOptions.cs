@@ -7,9 +7,6 @@ public class NurseryMediaOptions
     /// <summary>Public base URL of this API host, used to build media URLs (must match how clients reach the API).</summary>
     public string PublicBaseUrl { get; set; } = "https://localhost:44301";
 
-    /// <summary>Physical folder where logo files are stored (e.g. C:\Media\logo).</summary>
-    public string LogoPhysicalPath { get; set; } = @"C:\Media\logo";
-
     /// <summary>Root physical folder where tenant media folders are stored (e.g. C:\Media).</summary>
     public string MediaRootPath { get; set; } = @"C:\Media";
 
