@@ -82,7 +82,10 @@ public class NurseryBranchAppService
     {
         EnsureCanManageBranchCrud();
         Nursery nursery;
-       nursery = await _nurseryRepository.GetAsync(input.NurseryId);
+        using (_dataFilter.Disable<IMultiTenant>())
+        {
+            nursery = await _nurseryRepository.GetAsync(input.NurseryId);
+        }
 
 
         if (!nursery.TenantId.HasValue)

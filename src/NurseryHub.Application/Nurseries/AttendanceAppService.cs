@@ -126,6 +126,60 @@ public class AttendanceAppService : ApplicationService, IAttendanceAppService
             .ToList();
     }
 
+    public virtual async Task<IReadOnlyList<AttendanceWeeklyDaySummaryDto>> GetWeeklySummaryAsync(
+        GetAttendanceWeeklySummaryInput input)
+    {
+        await EnsureBranchInTenantAsync(input.NurseryBranchId);
+
+        var dayCount = input.DayCount is < 1 or > 31 ? 7 : input.DayCount;
+        var end = input.EndDate ?? DateOnly.FromDateTime(Clock.Now);
+        var start = end.AddDays(-(dayCount - 1));
+
+        var students = await _studentRepository.GetQueryableAsync();
+        var studentsList = await AsyncExecuter.ToListAsync(
+            students.Where(s => s.NurseryBranchId == input.NurseryBranchId && s.IsActive));
+
+        var totalStudents = studentsList.Count;
+        if (totalStudents == 0)
+        {
+            return Enumerable.Range(0, dayCount)
+                .Select(i => new AttendanceWeeklyDaySummaryDto
+                {
+                    Date = start.AddDays(i),
+                    PresentCount = 0,
+                    TotalCount = 0,
+                })
+                .ToList();
+        }
+
+        var studentIds = studentsList.Select(s => s.Id).ToList();
+        var attendances = await _attendanceRepository.GetQueryableAsync();
+        var attendanceList = await AsyncExecuter.ToListAsync(
+            attendances.Where(a =>
+                studentIds.Contains(a.StudentId)
+                && a.Date >= start
+                && a.Date <= end
+                && a.Status == AttendanceStatus.Present));
+
+        var presentByDate = attendanceList
+            .GroupBy(a => a.Date)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return Enumerable.Range(0, dayCount)
+            .Select(i =>
+            {
+                var date = start.AddDays(i);
+                presentByDate.TryGetValue(date, out var present);
+                return new AttendanceWeeklyDaySummaryDto
+                {
+                    Date = date,
+                    PresentCount = present,
+                    TotalCount = totalStudents,
+                };
+            })
+            .ToList();
+    }
+
     public virtual async Task<IReadOnlyList<AttendanceHistoryItemDto>> GetHistoryAsync(GetAttendanceHistoryInput input)
     {
         await ValidateStudentInBranchAsync(input.StudentId, input.NurseryBranchId);

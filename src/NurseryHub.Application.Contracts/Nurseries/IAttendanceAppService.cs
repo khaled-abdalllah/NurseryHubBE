@@ -13,5 +13,7 @@ public interface IAttendanceAppService : IApplicationService
 
     Task<IReadOnlyList<AttendanceDayRowDto>> GetByDateAsync(GetAttendanceByDateInput input);
 
+    Task<IReadOnlyList<AttendanceWeeklyDaySummaryDto>> GetWeeklySummaryAsync(GetAttendanceWeeklySummaryInput input);
+
     Task<IReadOnlyList<AttendanceHistoryItemDto>> GetHistoryAsync(GetAttendanceHistoryInput input);
 }
